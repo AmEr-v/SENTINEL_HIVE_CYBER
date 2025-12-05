@@ -1,0 +1,13 @@
+[Unit]
+Description=HTTP Honeypot (Flask)
+After=network.target
+
+[Service]
+User=glastopf
+WorkingDirectory=/home/glastopf/http-honeypot
+Environment="PATH=/home/glastopf/http-honeypot/venv/bin"
+ExecStart=/home/glastopf/http-honeypot/venv/bin/python /home/glastopf/http-honeypot/app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
