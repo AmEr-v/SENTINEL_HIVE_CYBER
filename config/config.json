@@ -1,0 +1,16 @@
+{
+    "honeypot": {
+        "ssh_port": 2222,
+        "http_port": 8080,
+        "ftp_port": 2121
+    },
+    "dashboard": {
+        "host": "0.0.0.0",
+        "port": 5000,
+        "debug": false
+    },
+    "logging": {
+        "log_dir": "logs",
+        "max_log_size_mb": 100
+    }
+}

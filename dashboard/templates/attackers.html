@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL HIVE - Top Attackers</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <span class="logo-icon">🐝</span>
+            <span>SENTINEL HIVE</span>
+        </div>
+        <div class="nav-links">
+            <a href="/">Dashboard</a>
+            <a href="/attacks">Attacks</a>
+            <a href="/attackers" class="active">Attackers</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Top Attackers Analysis</h1>
+        
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ stats.total_attacks }}</div>
+                    <div class="stat-label">Total Attacks</div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">👤</div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ stats.attacks_by_ip | length }}</div>
+                    <div class="stat-label">Unique Attackers</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Attackers Chart -->
+        <div class="chart-card" style="max-width: 800px; margin: 20px auto;">
+            <h3>Top 10 Attackers by Attack Count</h3>
+            <canvas id="attackersChart"></canvas>
+        </div>
+
+        <!-- Attackers Table -->
+        <div class="table-card">
+            <h3>All Attackers</h3>
+            <table class="attacks-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>IP Address</th>
+                        <th>Attack Count</th>
+                        <th>Percentage</th>
+                        <th>Threat Level</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ip, count in stats.top_attackers %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td class="ip-cell">{{ ip }}</td>
+                        <td>{{ count }}</td>
+                        <td>{{ ((count / stats.total_attacks) * 100) | round(1) }}%</td>
+                        <td>
+                            {% if count > 100 %}
+                            <span class="threat-badge critical">CRITICAL</span>
+                            {% elif count > 50 %}
+                            <span class="threat-badge high">HIGH</span>
+                            {% elif count > 20 %}
+                            <span class="threat-badge medium">MEDIUM</span>
+                            {% else %}
+                            <span class="threat-badge low">LOW</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="no-data">No attackers recorded yet</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Top Attackers Chart
+        const ctx = document.getElementById('attackersChart').getContext('2d');
+        const topAttackers = {{ stats.top_attackers | tojson }};
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: topAttackers.map(a => a[0]),
+                datasets: [{
+                    label: 'Attack Count',
+                    data: topAttackers.map(a => a[1]),
+                    backgroundColor: topAttackers.map((_, i) => {
+                        const colors = ['#e74c3c', '#e67e22', '#f39c12', '#3498db', '#2ecc71'];
+                        return colors[i % colors.length];
+                    })
+                }]
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

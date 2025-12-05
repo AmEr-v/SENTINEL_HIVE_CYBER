@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL HIVE - HoneyPot Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <span class="logo-icon">🐝</span>
+            <span>SENTINEL HIVE</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="active">Dashboard</a>
+            <a href="/attacks">Attacks</a>
+            <a href="/attackers">Attackers</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>HoneyPot Security Dashboard</h1>
+        
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ stats.total_attacks }}</div>
+                    <div class="stat-label">Total Attacks</div>
+                </div>
+            </div>
+            
+            <div class="stat-card ssh">
+                <div class="stat-icon">🔐</div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ stats.attacks_by_type.get('ssh', 0) }}</div>
+                    <div class="stat-label">SSH Attacks</div>
+                </div>
+            </div>
+            
+            <div class="stat-card http">
+                <div class="stat-icon">🌐</div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ stats.attacks_by_type.get('http', 0) }}</div>
+                    <div class="stat-label">HTTP Attacks</div>
+                </div>
+            </div>
+            
+            <div class="stat-card ftp">
+                <div class="stat-icon">📁</div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ stats.attacks_by_type.get('ftp', 0) }}</div>
+                    <div class="stat-label">FTP Attacks</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>Attacks by Type</h3>
+                <canvas id="attackTypeChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h3>Hourly Distribution</h3>
+                <canvas id="hourlyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Attacks Table -->
+        <div class="table-card">
+            <h3>Recent Attacks</h3>
+            <table class="attacks-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Type</th>
+                        <th>Source IP</th>
+                        <th>Port</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attack in stats.recent_attacks %}
+                    <tr>
+                        <td>{{ attack.timestamp }}</td>
+                        <td><span class="attack-type {{ attack.attack_type }}">{{ attack.attack_type | upper }}</span></td>
+                        <td>{{ attack.source_ip }}</td>
+                        <td>{{ attack.source_port }}</td>
+                        <td>
+                            {% if attack.details.username %}
+                            User: {{ attack.details.username }}
+                            {% elif attack.details.method %}
+                            {{ attack.details.method }} {{ attack.details.path }}
+                            {% else %}
+                            {{ attack.details.action | default('-') }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="no-data">No attacks recorded yet</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Top Attackers -->
+        <div class="table-card">
+            <h3>Top Attackers</h3>
+            <table class="attacks-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>IP Address</th>
+                        <th>Attack Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ip, count in stats.top_attackers %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ ip }}</td>
+                        <td>{{ count }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="no-data">No attackers recorded yet</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Attack Type Chart
+        const attackTypeCtx = document.getElementById('attackTypeChart').getContext('2d');
+        const attackTypes = {{ stats.attacks_by_type | tojson }};
+        
+        new Chart(attackTypeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(attackTypes).map(k => k.toUpperCase()),
+                datasets: [{
+                    data: Object.values(attackTypes),
+                    backgroundColor: [
+                        '#3498db',
+                        '#e74c3c',
+                        '#2ecc71',
+                        '#f39c12',
+                        '#9b59b6'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Hourly Distribution Chart
+        const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+        const hourlyData = {{ stats.hourly_distribution | tojson }};
+        const hours = Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`);
+        const hourlyValues = hours.map(h => hourlyData[h] || 0);
+        
+        new Chart(hourlyCtx, {
+            type: 'bar',
+            data: {
+                labels: hours,
+                datasets: [{
+                    label: 'Attacks',
+                    data: hourlyValues,
+                    backgroundColor: '#3498db'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Auto-refresh every 30 seconds
+        setTimeout(() => location.reload(), 30000);
+    </script>
+</body>
+</html>
