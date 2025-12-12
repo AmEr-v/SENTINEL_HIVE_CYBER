@@ -111,30 +111,47 @@ def _normalize_ssh_events(raw_events: List[Dict[str, Any]]) -> List[Dict[str, An
 		return normalized
 
 
+def _collect_http_events() -> List[Dict[str, Any]]:
+	http_raw = _load_json_lines(HTTP_LOG_PATH, MAX_EVENTS * 2)
+	http_events = _normalize_http_events(http_raw)
+	http_events.sort(
+		key=lambda e: e.get("timestamp") or datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+		reverse=True,
+	)
+	return http_events[:MAX_EVENTS]
+
+
+def _collect_ssh_events() -> List[Dict[str, Any]]:
+	ssh_raw = _load_json_lines(SSH_LOG_PATH, MAX_EVENTS * 2)
+	ssh_events = _normalize_ssh_events(ssh_raw)
+	ssh_events.sort(
+		key=lambda e: e.get("timestamp") or datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+		reverse=True,
+	)
+	return ssh_events[:MAX_EVENTS]
+
+
 def _collect_events() -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-		http_raw = _load_json_lines(HTTP_LOG_PATH, MAX_EVENTS * 2)
-		ssh_raw = _load_json_lines(SSH_LOG_PATH, MAX_EVENTS * 2)
+	http_events = _collect_http_events()
+	ssh_events = _collect_ssh_events()
 
-		http_events = _normalize_http_events(http_raw)
-		ssh_events = _normalize_ssh_events(ssh_raw)
+	combined: List[Dict[str, Any]] = http_events + ssh_events
+	combined.sort(
+		key=lambda e: e.get("timestamp") or datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+		reverse=True,
+	)
+	combined = combined[:MAX_EVENTS]
 
-		combined: List[Dict[str, Any]] = http_events + ssh_events
-		combined.sort(
-				key=lambda e: e.get("timestamp") or datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
-				reverse=True,
-		)
-		combined = combined[:MAX_EVENTS]
+	unique_ips = {e.get("ip") for e in combined if e.get("ip")}
 
-		unique_ips = {e.get("ip") for e in combined if e.get("ip")}
-
-		stats = {
-				"total_events": len(combined),
-				"http_events": len(http_events),
-				"ssh_events": len(ssh_events),
-				"unique_ips": len(unique_ips),
-				"last_update": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
-		}
-		return combined, stats
+	stats = {
+		"total_events": len(combined),
+		"http_events": len(http_events),
+		"ssh_events": len(ssh_events),
+		"unique_ips": len(unique_ips),
+		"last_update": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
+	}
+	return combined, stats
 
 
 def _serialize_event(event: Dict[str, Any]) -> Dict[str, Any]:
@@ -167,6 +184,34 @@ def api_events():
 				"log_paths": {"http": str(HTTP_LOG_PATH), "ssh": str(SSH_LOG_PATH)},
 		}
 		return jsonify(payload)
+
+
+@app.route("/api/http-events")
+def api_http_events():
+	events = _collect_http_events()
+	payload = {
+		"events": [_serialize_event(e) for e in events],
+		"stats": {
+			"count": len(events),
+			"last_update": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
+		},
+		"log_path": str(HTTP_LOG_PATH),
+	}
+	return jsonify(payload)
+
+
+@app.route("/api/ssh-events")
+def api_ssh_events():
+	events = _collect_ssh_events()
+	payload = {
+		"events": [_serialize_event(e) for e in events],
+		"stats": {
+			"count": len(events),
+			"last_update": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
+		},
+		"log_path": str(SSH_LOG_PATH),
+	}
+	return jsonify(payload)
 
 
 INDEX_TEMPLATE = r"""
@@ -239,6 +284,18 @@ INDEX_TEMPLATE = r"""
 		.log-path { font-family: var(--font); font-size: 12px; color: #d7deea; }
 		.table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid #1f2937; border-radius: 12px; padding: 8px; max-height: 70vh; }
 		.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+		.nav { display: flex; gap: 10px; align-items: center; }
+		.nav-link {
+			text-decoration: none;
+			color: var(--muted);
+			padding: 8px 12px;
+			border-radius: 8px;
+			border: 1px solid #1f2937;
+			font-weight: 700;
+			font-size: 13px;
+		}
+		.nav-link:hover { border-color: var(--accent); color: var(--accent); }
+		.nav-active { border-color: var(--accent); color: var(--accent); }
 		button {
 			background: var(--accent);
 			color: #0b1220;
@@ -266,6 +323,11 @@ INDEX_TEMPLATE = r"""
 			<div class="sub">Live honeypot telemetry from SSH and HTTP traps</div>
 		</div>
 		<div class="actions">
+			<nav class="nav">
+				<a class="nav-link nav-active" href="/">Dashboard</a>
+				<a class="nav-link" href="/live-http">Live HTTP</a>
+				<a class="nav-link" href="/live-ssh">Live SSH</a>
+			</nav>
 			<button id="refresh">Refresh now</button>
 			<span class="pill" id="last-update">Last update: --</span>
 		</div>
@@ -377,6 +439,244 @@ INDEX_TEMPLATE = r"""
 </body>
 </html>
 """
+
+
+LIVE_HTTP_TEMPLATE = r"""
+<!doctype html>
+<html lang=\"en\">
+<head>
+	<meta charset=\"utf-8\">
+	<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+	<title>Sentinel Hive - Live HTTP</title>
+	<style>
+		:root {
+			--bg: #0b1220; --panel: #0f172a; --card: #111827; --accent: #22d3ee; --accent-2: #f97316;
+			--text: #e8ecf3; --muted: #a5b4c6; --font: 'JetBrains Mono', 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+		}
+		* { box-sizing: border-box; }
+		body { margin: 0; background: radial-gradient(circle at 20% 20%, #132644, var(--bg)); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.55; min-height: 100vh; }
+		header { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1f2937; background: linear-gradient(90deg, #0f172a, #0b1220); position: sticky; top: 0; z-index: 10; }
+		.brand { letter-spacing: 3px; text-transform: uppercase; color: var(--accent); font-weight: 800; font-size: 18px; }
+		.sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+		main { padding: 22px 24px 54px 24px; max-width: 1280px; margin: auto; }
+		.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+		.nav { display: flex; gap: 10px; align-items: center; }
+		.nav-link { text-decoration: none; color: var(--muted); padding: 8px 12px; border-radius: 8px; border: 1px solid #1f2937; font-weight: 700; font-size: 13px; }
+		.nav-link:hover { border-color: var(--accent); color: var(--accent); }
+		.nav-active { border-color: var(--accent); color: var(--accent); }
+		.table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid #1f2937; border-radius: 12px; padding: 8px; max-height: 75vh; }
+		table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+		th, td { padding: 10px 12px; border-bottom: 1px solid #1f2937; text-align: left; }
+		th { color: var(--muted); letter-spacing: 1px; text-transform: uppercase; font-size: 12.5px; background: #0f172a; position: sticky; top: 0; z-index: 1; }
+		tr:hover td { background: #0f1c33; }
+		.pill { background: #1b2435; border-radius: 22px; padding: 6px 12px; font-size: 12px; color: var(--muted); }
+		button { background: var(--accent); color: #0b1220; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 800; letter-spacing: 0.5px; font-size: 13.5px; box-shadow: 0 4px 12px #22d3ee44; }
+		.muted { color: var(--muted); }
+	</style>
+</head>
+<body>
+	<header>
+		<div>
+			<div class="brand">Sentinel Hive / Live HTTP</div>
+			<div class="sub">Edge honeypot request + credential attempts</div>
+		</div>
+		<div class="actions">
+			<nav class="nav">
+				<a class="nav-link" href="/">Dashboard</a>
+				<a class="nav-link nav-active" href="/live-http">Live HTTP</a>
+				<a class="nav-link" href="/live-ssh">Live SSH</a>
+			</nav>
+			<button id="refresh">Refresh now</button>
+			<span class="pill" id="last-update">Last update: --</span>
+		</div>
+	</header>
+
+	<main>
+		<div class="muted" style="margin-bottom:12px;">Log file: <span style="color:#d7deea;">{{ http_log }}</span> &nbsp;|&nbsp; Showing up to {{ max_events }} entries</div>
+		<div class="table-wrap">
+			<table>
+				<thead>
+					<tr>
+						<th>Time (UTC)</th>
+						<th>IP</th>
+						<th>Method</th>
+						<th>Path</th>
+						<th>Query</th>
+						<th>User</th>
+						<th>Password</th>
+						<th>User-Agent</th>
+					</tr>
+				</thead>
+				<tbody id="events-body"></tbody>
+			</table>
+		</div>
+	</main>
+
+	<script>
+		const tbody = document.getElementById('events-body');
+		const lastUpdate = document.getElementById('last-update');
+
+		function renderRow(evt) {
+			const tr = document.createElement('tr');
+			const cells = [
+				evt.timestamp ? new Date(evt.timestamp).toISOString().replace('T',' ').replace('Z','') : '—',
+				evt.ip || 'n/a',
+				evt.method || '—',
+				evt.path || '—',
+				evt.query || '—',
+				evt.username || '—',
+				evt.password || '—',
+				evt.user_agent || '—',
+			];
+			cells.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+			return tr;
+		}
+
+		async function loadEvents() {
+			try {
+				const res = await fetch('/api/http-events');
+				const data = await res.json();
+				tbody.innerHTML = '';
+				data.events.forEach(evt => tbody.appendChild(renderRow(evt)));
+				lastUpdate.textContent = 'Last update: ' + data.stats.last_update;
+			} catch (err) {
+				lastUpdate.textContent = 'Failed to refresh: ' + err;
+			}
+		}
+
+		document.getElementById('refresh').addEventListener('click', loadEvents);
+		loadEvents();
+		setInterval(loadEvents, 8000);
+	</script>
+</body>
+</html>
+"""
+
+
+LIVE_SSH_TEMPLATE = r"""
+<!doctype html>
+<html lang=\"en\">
+<head>
+	<meta charset=\"utf-8\">
+	<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+	<title>Sentinel Hive - Live SSH</title>
+	<style>
+		:root {
+			--bg: #0b1220; --panel: #0f172a; --card: #111827; --accent: #22d3ee; --accent-2: #f97316;
+			--text: #e8ecf3; --muted: #a5b4c6; --font: 'JetBrains Mono', 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+		}
+		* { box-sizing: border-box; }
+		body { margin: 0; background: radial-gradient(circle at 20% 20%, #132644, var(--bg)); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.55; min-height: 100vh; }
+		header { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1f2937; background: linear-gradient(90deg, #0f172a, #0b1220); position: sticky; top: 0; z-index: 10; }
+		.brand { letter-spacing: 3px; text-transform: uppercase; color: var(--accent); font-weight: 800; font-size: 18px; }
+		.sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+		main { padding: 22px 24px 54px 24px; max-width: 1280px; margin: auto; }
+		.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+		.nav { display: flex; gap: 10px; align-items: center; }
+		.nav-link { text-decoration: none; color: var(--muted); padding: 8px 12px; border-radius: 8px; border: 1px solid #1f2937; font-weight: 700; font-size: 13px; }
+		.nav-link:hover { border-color: var(--accent); color: var(--accent); }
+		.nav-active { border-color: var(--accent); color: var(--accent); }
+		.table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid #1f2937; border-radius: 12px; padding: 8px; max-height: 75vh; }
+		table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+		th, td { padding: 10px 12px; border-bottom: 1px solid #1f2937; text-align: left; }
+		th { color: var(--muted); letter-spacing: 1px; text-transform: uppercase; font-size: 12.5px; background: #0f172a; position: sticky; top: 0; z-index: 1; }
+		tr:hover td { background: #0f1c33; }
+		.pill { background: #1b2435; border-radius: 22px; padding: 6px 12px; font-size: 12px; color: var(--muted); }
+		button { background: var(--accent); color: #0b1220; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 800; letter-spacing: 0.5px; font-size: 13.5px; box-shadow: 0 4px 12px #22d3ee44; }
+		.muted { color: var(--muted); }
+	</style>
+</head>
+<body>
+	<header>
+		<div>
+			<div class="brand">Sentinel Hive / Live SSH</div>
+			<div class="sub">Cowrie login attempts and messages</div>
+		</div>
+		<div class="actions">
+			<nav class="nav">
+				<a class="nav-link" href="/">Dashboard</a>
+				<a class="nav-link" href="/live-http">Live HTTP</a>
+				<a class="nav-link nav-active" href="/live-ssh">Live SSH</a>
+			</nav>
+			<button id="refresh">Refresh now</button>
+			<span class="pill" id="last-update">Last update: --</span>
+		</div>
+	</header>
+
+	<main>
+		<div class="muted" style="margin-bottom:12px;">Log file: <span style="color:#d7deea;">{{ ssh_log }}</span> &nbsp;|&nbsp; Showing up to {{ max_events }} entries</div>
+		<div class="table-wrap">
+			<table>
+				<thead>
+					<tr>
+						<th>Time (UTC)</th>
+						<th>IP</th>
+						<th>Event</th>
+						<th>Username</th>
+						<th>Password</th>
+						<th>Message</th>
+					</tr>
+				</thead>
+				<tbody id="events-body"></tbody>
+			</table>
+		</div>
+	</main>
+
+	<script>
+		const tbody = document.getElementById('events-body');
+		const lastUpdate = document.getElementById('last-update');
+
+		function renderRow(evt) {
+			const tr = document.createElement('tr');
+			const cells = [
+				evt.timestamp ? new Date(evt.timestamp).toISOString().replace('T',' ').replace('Z','') : '—',
+				evt.ip || 'n/a',
+				evt.event || '—',
+				evt.username || '—',
+				evt.password || '—',
+				evt.message || '—',
+			];
+			cells.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+			return tr;
+		}
+
+		async function loadEvents() {
+			try {
+				const res = await fetch('/api/ssh-events');
+				const data = await res.json();
+				tbody.innerHTML = '';
+				data.events.forEach(evt => tbody.appendChild(renderRow(evt)));
+				lastUpdate.textContent = 'Last update: ' + data.stats.last_update;
+			} catch (err) {
+				lastUpdate.textContent = 'Failed to refresh: ' + err;
+			}
+		}
+
+		document.getElementById('refresh').addEventListener('click', loadEvents);
+		loadEvents();
+		setInterval(loadEvents, 8000);
+	</script>
+</body>
+</html>
+"""
+
+
+@app.route("/live-http")
+def live_http():
+	return render_template_string(
+		LIVE_HTTP_TEMPLATE,
+		http_log=str(HTTP_LOG_PATH),
+		max_events=MAX_EVENTS,
+	)
+
+
+@app.route("/live-ssh")
+def live_ssh():
+	return render_template_string(
+		LIVE_SSH_TEMPLATE,
+		ssh_log=str(SSH_LOG_PATH),
+		max_events=MAX_EVENTS,
+	)
 
 
 def _str_to_bool(value: str) -> bool:
