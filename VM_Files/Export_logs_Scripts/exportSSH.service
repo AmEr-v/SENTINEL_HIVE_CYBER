@@ -1,0 +1,15 @@
+[Unit]
+Description=Cowrie Log Exporter (runs as hive)
+After=network-online.target
+
+[Service]
+User=hive
+Group=cowrie
+WorkingDirectory=/opt/cowrie-exporter
+Environment=API_TOKEN=CHANGE_THIS_TO_LONG_RANDOM
+ExecStart=/opt/cowrie-exporter/venv/bin/python exporter.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

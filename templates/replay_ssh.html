@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Sentinel Hive - SSH Replay</title>
+	<style>
+		:root {
+			--bg: #0b1220; --panel: #0f172a; --card: #111827; --accent: #22d3ee; --accent-2: #f97316;
+			--text: #e8ecf3; --muted: #a5b4c6; --font: 'JetBrains Mono', 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+		}
+		* { box-sizing: border-box; }
+		body { margin: 0; background: radial-gradient(circle at 20% 20%, #132644, var(--bg)); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.55; min-height: 100vh; }
+		header { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1f2937; background: linear-gradient(90deg, #0f172a, #0b1220); position: sticky; top: 0; z-index: 10; }
+		.brand { letter-spacing: 3px; text-transform: uppercase; color: var(--accent); font-weight: 800; font-size: 18px; }
+		.sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+		main { padding: 22px 24px 54px 24px; max-width: 1280px; margin: auto; }
+		.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+		.nav { display: flex; gap: 10px; align-items: center; }
+		.nav-link { text-decoration: none; color: var(--muted); padding: 8px 12px; border-radius: 8px; border: 1px solid #1f2937; font-weight: 700; font-size: 13px; }
+		.nav-link:hover { border-color: var(--accent); color: var(--accent); }
+		.nav-active { border-color: var(--accent); color: var(--accent); }
+		.control-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+		input, select { background: #111827; border: 1px solid #1f2937; color: var(--text); padding: 8px 10px; border-radius: 8px; font-family: var(--font); }
+		button { background: var(--accent); color: #0b1220; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 800; letter-spacing: 0.5px; font-size: 13.5px; box-shadow: 0 4px 12px #22d3ee44; }
+		button.secondary { background: #1f2937; color: var(--text); }
+		.pill { background: #1b2435; border-radius: 22px; padding: 6px 12px; font-size: 12px; color: var(--muted); border: 1px solid #1f2937; }
+		.info { color: var(--muted); margin: 10px 0; }
+		.terminal { background: #0b1220; border: 1px solid #1f2937; border-radius: 12px; padding: 12px; min-height: 320px; max-height: 70vh; overflow-y: auto; font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1.45; }
+		.muted { color: var(--muted); }
+	</style>
+</head>
+<body>
+	<header>
+		<div>
+			<div class="brand">Sentinel Hive / SSH Replay</div>
+			<div class="sub">Playback captured Cowrie SSH stream</div>
+		</div>
+		<div class="actions">
+			<nav class="nav">
+				<a class="nav-link" href="/">Dashboard</a>
+				<a class="nav-link" href="/live-http">Live HTTP</a>
+				<a class="nav-link" href="/live-ssh">Live SSH</a>
+				<a class="nav-link nav-active" href="/replay-ssh">Replay</a>
+				<a class="nav-link" href="/ssh-session-replay">Sessions</a>
+			</nav>
+		</div>
+	</header>
+
+	<main>
+		<div class="info">Choose a time window and play back stored SSH telemetry. Auto-scroll keeps you on the latest replayed line.</div>
+		<div class="info" id="range-info">Loading range…</div>
+		<div class="control-bar">
+			<label class="muted">Start <input type="datetime-local" id="start-time"></label>
+			<label class="muted">End <input type="datetime-local" id="end-time"></label>
+			<label class="muted">Speed
+				<select id="speed">
+					<option value="0.5">0.5x</option>
+					<option value="1" selected>1x</option>
+					<option value="2">2x</option>
+					<option value="5">5x</option>
+					<option value="10">10x</option>
+				</select>
+			</label>
+			<button id="play">Play</button>
+			<button id="pause" class="secondary">Pause</button>
+			<button id="reset" class="secondary">Reset</button>
+		</div>
+		<div class="pill" id="status">Idle</div>
+		<div class="terminal" id="replay-log"></div>
+	</main>
+
+	<script>
+		const rangeInfo = document.getElementById('range-info');
+		const logView = document.getElementById('replay-log');
+		const startInput = document.getElementById('start-time');
+		const endInput = document.getElementById('end-time');
+		const speedSelect = document.getElementById('speed');
+		const playBtn = document.getElementById('play');
+		const pauseBtn = document.getElementById('pause');
+		const resetBtn = document.getElementById('reset');
+		const statusEl = document.getElementById('status');
+
+		let rows = [];
+		let idx = 0;
+		let timer = null;
+		const BASE_INTERVAL = 400;
+		const LIMIT = 2000;
+
+		function setStatus(text) {
+			statusEl.textContent = text;
+		}
+
+		function scrollToBottom() {
+			logView.scrollTop = logView.scrollHeight;
+		}
+
+		function toIsoOrNull(val) {
+			if (!val) return null;
+			const d = new Date(val);
+			return isNaN(d.getTime()) ? null : d.toISOString();
+		}
+
+		async function refreshRange() {
+			try {
+				const res = await fetch('/api/replay/range');
+				const data = await res.json();
+				rangeInfo.textContent = `Available: ${data.min_ts || 'n/a'} -> ${data.max_ts || 'n/a'} (rows: ${data.count || 0})`;
+			} catch (err) {
+				rangeInfo.textContent = 'Range unavailable: ' + err;
+			}
+		}
+
+		async function loadRows() {
+			setStatus('Loading...');
+			const params = new URLSearchParams();
+			const s = toIsoOrNull(startInput.value);
+			const e = toIsoOrNull(endInput.value);
+			if (s) params.set('start', s);
+			if (e) params.set('end', e);
+			params.set('limit', LIMIT.toString());
+			try {
+				const res = await fetch('/api/replay/query?' + params.toString());
+				const data = await res.json();
+				rows = data.rows || [];
+				idx = 0;
+				logView.textContent = '';
+				setStatus(`Loaded ${rows.length} lines`);
+			} catch (err) {
+				setStatus('Load failed: ' + err);
+				rows = [];
+				idx = 0;
+			}
+		}
+
+		function step() {
+			if (idx >= rows.length) {
+				stopPlayback();
+				setStatus('Playback finished');
+				return;
+			}
+			const row = rows[idx++];
+			logView.textContent += `[${row.ts}] ${row.line}\n`;
+			scrollToBottom();
+		}
+
+		function stopPlayback() {
+			if (timer) {
+				clearInterval(timer);
+				timer = null;
+			}
+		}
+
+		async function startPlayback() {
+			if (timer) return;
+			if (!rows.length || idx >= rows.length) {
+				await loadRows();
+			}
+			if (!rows.length) {
+				setStatus('No data to play');
+				return;
+			}
+			const interval = Math.max(50, BASE_INTERVAL / parseFloat(speedSelect.value || '1'));
+			timer = setInterval(step, interval);
+			setStatus('Playing');
+		}
+
+		function resetPlayback() {
+			stopPlayback();
+			idx = 0;
+			logView.textContent = '';
+			setStatus('Reset');
+		}
+
+		playBtn.addEventListener('click', startPlayback);
+		pauseBtn.addEventListener('click', () => { stopPlayback(); setStatus('Paused'); });
+		resetBtn.addEventListener('click', () => { resetPlayback(); });
+
+		refreshRange();
+	</script>
+</body>
+</html>

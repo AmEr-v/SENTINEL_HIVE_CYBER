@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Sentinel Hive Dashboard</title>
+	<style>
+		:root {
+			--bg: #0b1220;
+			--panel: #0f172a;
+			--card: #111827;
+			--accent: #22d3ee;
+			--accent-2: #f97316;
+			--text: #e8ecf3;
+			--muted: #a5b4c6;
+			--danger: #f87171;
+			--success: #34d399;
+			--font: 'JetBrains Mono', 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+		}
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			background: radial-gradient(circle at 20% 20%, #132644, var(--bg));
+			color: var(--text);
+			font-family: var(--font);
+			font-size: 14px;
+			line-height: 1.55;
+			min-height: 100vh;
+		}
+		header {
+			padding: 20px 24px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			border-bottom: 1px solid #1f2937;
+			background: linear-gradient(90deg, #0f172a, #0b1220);
+			position: sticky;
+			top: 0;
+			z-index: 10;
+		}
+		.brand { letter-spacing: 3px; text-transform: uppercase; color: var(--accent); font-weight: 800; font-size: 18px; }
+		.sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+		main { padding: 22px 24px 54px 24px; max-width: 1280px; margin: auto; }
+		.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+		.card {
+			background: linear-gradient(160deg, #111827 0%, #0d1524 100%);
+			border: 1px solid #1f2937;
+			padding: 16px 18px;
+			border-radius: 12px;
+			box-shadow: 0 6px 28px #0b122055;
+		}
+		.card h3 { margin: 0 0 8px 0; font-size: 15px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+		.card .value { font-size: 30px; font-weight: 800; color: var(--text); }
+		.badge { display: inline-block; padding: 5px 9px; border-radius: 7px; border: 1px solid #243045; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+		.badge.warn { border-color: var(--accent-2); color: var(--accent-2); }
+		.badge.ok { border-color: var(--success); color: var(--success); }
+		table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+		th, td { padding: 10px 12px; border-bottom: 1px solid #1f2937; text-align: left; }
+		th { color: var(--muted); letter-spacing: 1px; text-transform: uppercase; font-size: 12.5px; background: #0f172a; position: sticky; top: 0; z-index: 1; }
+		tr:hover td { background: #0f1c33; }
+		.chip { display: inline-block; padding: 3px 7px; border-radius: 5px; border: 1px solid #1f2937; font-size: 12px; font-weight: 700; }
+		.chip.http { border-color: var(--accent); color: var(--accent); }
+		.chip.ssh { border-color: var(--accent-2); color: var(--accent-2); }
+		.pill { background: #1b2435; border-radius: 22px; padding: 6px 12px; font-size: 12px; color: var(--muted); }
+		.muted { color: var(--muted); }
+		.footer { margin-top: 18px; color: var(--muted); font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
+		.log-path { font-family: var(--font); font-size: 12px; color: #d7deea; }
+		.table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid #1f2937; border-radius: 12px; padding: 8px; max-height: 70vh; }
+		.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+		.nav { display: flex; gap: 10px; align-items: center; }
+		.nav-link {
+			text-decoration: none;
+			color: var(--muted);
+			padding: 8px 12px;
+			border-radius: 8px;
+			border: 1px solid #1f2937;
+			font-weight: 700;
+			font-size: 13px;
+		}
+		.nav-link:hover { border-color: var(--accent); color: var(--accent); }
+		.nav-active { border-color: var(--accent); color: var(--accent); }
+		button {
+			background: var(--accent);
+			color: #0b1220;
+			border: none;
+			padding: 10px 14px;
+			border-radius: 8px;
+			cursor: pointer;
+			font-weight: 800;
+			letter-spacing: 0.5px;
+			font-size: 13.5px;
+			box-shadow: 0 4px 12px #22d3ee44;
+		}
+		button.secondary { background: #1f2937; color: var(--text); }
+		.widget-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 18px; }
+		.widget-card { background: linear-gradient(160deg, #111827 0%, #0d1524 100%); border: 1px solid #1f2937; padding: 14px; border-radius: 12px; box-shadow: 0 6px 22px #0b122055; }
+		.widget-title { margin: 0 0 8px 0; color: var(--muted); font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
+		.threat-bar { width: 100%; height: 14px; background: #1b2435; border-radius: 999px; overflow: hidden; border: 1px solid #243045; }
+		.threat-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #22d3ee, #f97316, #f43f5e); transition: width 0.6s ease; }
+		.badge-status { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid #1f2937; }
+		.badge-ok { color: #34d399; border-color: #34d39944; }
+		.badge-warn { color: #f59e0b; border-color: #f59e0b44; }
+		.badge-crit { color: #f87171; border-color: #f8717144; }
+		.legend { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+		.legend span { display: inline-flex; align-items: center; gap: 6px; }
+		.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+		.dot-green { background: #34d399; }
+		.dot-orange { background: #f59e0b; }
+		.dot-red { background: #f87171; animation: pulse 1.2s infinite; }
+		@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(248,113,113,0.45);} 70% { box-shadow: 0 0 0 10px rgba(248,113,113,0);} 100% { box-shadow: 0 0 0 0 rgba(248,113,113,0);} }
+		#map { width: 100%; height: 320px; border-radius: 12px; overflow: hidden; border: 1px solid #1f2937; }
+		.list-compact { list-style: none; padding: 0; margin: 0; }
+		.list-compact li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #1f2937; font-size: 13px; }
+		.alert { background: #1b2435; border: 1px solid #243045; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+		.alert.high { border-color: #f87171; color: #fca5a5; }
+		.alert.med { border-color: #f59e0b; color: #fbbf24; }
+		.alert.low { border-color: #22d3ee; color: #67e8f9; }
+		@media (max-width: 640px) {
+			header { flex-direction: column; align-items: flex-start; gap: 10px; }
+			main { padding: 16px; }
+			th, td { white-space: nowrap; }
+		}
+	</style>
+</head>
+<body>
+	<header>
+		<div>
+			<div class="brand">Sentinel Hive / Threat Desk</div>
+			<div class="sub">Live honeypot telemetry from SSH and HTTP traps</div>
+		</div>
+		<div class="actions">
+			<nav class="nav">
+				<a class="nav-link nav-active" href="/">Dashboard</a>
+				<a class="nav-link" href="/live-http">Live HTTP</a>
+				<a class="nav-link" href="/live-ssh">Live SSH</a>
+				<a class="nav-link" href="/replay-ssh">Replay</a>
+				<a class="nav-link" href="/ssh-session-replay">Sessions</a>
+			</nav>
+			<button id="refresh">Refresh now</button>
+			<span class="pill" id="last-update">Last update: --</span>
+		</div>
+	</header>
+
+	<main>
+		<div class="grid">
+			<div class="card">
+				<h3>Total Events</h3>
+				<div class="value" id="stat-total">{{ stats.total_events }}</div>
+				<div class="muted">Max returned: {{ max_events }}</div>
+			</div>
+			<div class="card">
+				<h3>HTTP Attempts</h3>
+				<div class="value" id="stat-http">{{ stats.http_events }}</div>
+				<span class="badge warn">Edge honeypot</span>
+			</div>
+			<div class="card">
+				<h3>SSH Attempts</h3>
+				<div class="value" id="stat-ssh">{{ stats.ssh_events }}</div>
+				<span class="badge warn">Cowrie</span>
+			</div>
+			<div class="card">
+				<h3>Unique IPs</h3>
+				<div class="value" id="stat-ips">{{ stats.unique_ips }}</div>
+				<span class="badge ok">Deduplicated</span>
+			</div>
+		</div>
+
+		<div style="margin: 18px 0 10px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+			<div class="muted">Live feed of SSH and HTTP attack attempts</div>
+			<div class="actions">
+				<span class="pill">HTTP log: <span class="log-path">{{ http_log }}</span></span>
+				<span class="pill">SSH source: <span class="log-path">{{ ssh_source }}</span></span>
+			</div>
+		</div>
+
+		<div class="widget-grid">
+			<div class="widget-card">
+				<h4 class="widget-title">Threat Level</h4>
+				<div class="threat-bar"><div id="threat-fill" class="threat-fill"></div></div>
+				<div id="threat-label" class="muted" style="margin-top:8px; font-weight:700;">Calculating…</div>
+			</div>
+			<div class="widget-card">
+				<h4 class="widget-title">Protocol Split</h4>
+				<canvas id="protocol-chart" height="140"></canvas>
+			</div>
+			<div class="widget-card">
+				<h4 class="widget-title">Top Attacker IPs</h4>
+				<ul id="top-ips" class="list-compact"></ul>
+			</div>
+			<div class="widget-card">
+				<h4 class="widget-title">Node Health (simulated)</h4>
+				<div class="legend" style="margin-bottom:8px;">
+					<span><span class="dot dot-green"></span> Healthy</span>
+					<span><span class="dot dot-orange"></span> Degraded</span>
+					<span><span class="dot dot-red"></span> Under Attack</span>
+				</div>
+				<div id="node-health" class="muted">Loading…</div>
+			</div>
+		</div>
+
+		<div class="widget-grid" style="grid-template-columns: 2fr 1fr;">
+			<div class="widget-card" style="grid-column: span 2;">
+				<div style="display:flex; justify-content: space-between; align-items:center; gap:10px;">
+					<h4 class="widget-title" style="margin:0;">Global Sensor Grid <span class="pill" id="sim-status">SIMULATED</span></h4>
+					<div class="legend">
+						<span><span class="dot dot-green"></span> Normal</span>
+						<span><span class="dot dot-orange"></span> Degraded</span>
+						<span><span class="dot dot-red"></span> Under Attack</span>
+					</div>
+				</div>
+				<div id="map"></div>
+				<div id="node-counter" class="muted" style="margin-top:8px;">Active Nodes: —</div>
+			</div>
+			<div class="widget-card">
+				<h4 class="widget-title">Attack Timeline (60m)</h4>
+				<canvas id="timeline-chart" height="180"></canvas>
+			</div>
+			<div class="widget-card">
+				<h4 class="widget-title">Recent Alerts (Simulated)</h4>
+				<div id="alerts"></div>
+			</div>
+		</div>
+
+		<div class="table-wrap">
+			<table id="events-table">
+				<thead>
+					<tr>
+						<th>Time (UTC)</th>
+						<th>Source</th>
+						<th>Event</th>
+						<th>IP</th>
+						<th>Username</th>
+						<th>Password</th>
+						<th>Path / Message</th>
+					</tr>
+				</thead>
+				<tbody id="events-body"></tbody>
+			</table>
+		</div>
+
+		<div class="footer">
+			<span>Data auto-refreshes every 10s.</span>
+			<span>Configure paths with HTTP_LOG_PATH and SSH_LOG_PATH environment variables.</span>
+			<span>Current cap: {{ max_events }} events.</span>
+		</div>
+	</main>
+
+	<script>
+		// External libs
+	</script>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+	<script>
+		const tbody = document.getElementById('events-body');
+		const lastUpdate = document.getElementById('last-update');
+		const statTotal = document.getElementById('stat-total');
+		const statHttp = document.getElementById('stat-http');
+		const statSsh = document.getElementById('stat-ssh');
+		const statIps = document.getElementById('stat-ips');
+		const threatFill = document.getElementById('threat-fill');
+		const threatLabel = document.getElementById('threat-label');
+		const topIpsEl = document.getElementById('top-ips');
+		const alertsEl = document.getElementById('alerts');
+		const nodeHealthEl = document.getElementById('node-health');
+		const nodeCounterEl = document.getElementById('node-counter');
+		const simStatus = document.getElementById('sim-status');
+
+		let protocolChart;
+		let timelineChart;
+		let map;
+		let markers = L.layerGroup();
+
+		function updateThreat(threat) {
+			const score = threat && typeof threat.score === 'number' ? threat.score : 0;
+			threatFill.style.width = Math.min(100, score) + '%';
+			threatLabel.textContent = `Threat Level: ${threat?.label || 'N/A'} (${score})`;
+		}
+
+		function updateProtocol(split) {
+			if (!protocolChart) return;
+			protocolChart.data.datasets[0].data = [split.ssh || 0, split.http || 0];
+			protocolChart.update();
+		}
+
+		function updateTimeline(timeline) {
+			if (!timelineChart || !timeline) return;
+			const labels = (timeline.labels || []).map(t => new Date(t).toISOString().slice(11,16));
+			timelineChart.data.labels = labels;
+			timelineChart.data.datasets[0].data = timeline.ssh || [];
+			timelineChart.data.datasets[1].data = timeline.http || [];
+			timelineChart.update();
+		}
+
+		function updateTopIps(list) {
+			topIpsEl.innerHTML = '';
+			(list || []).sort((a,b)=> (b.count||0)-(a.count||0)).slice(0,10).forEach(item => {
+				const li = document.createElement('li');
+				li.innerHTML = `<span>${item.ip} (${item.country || ''})</span><span>${item.count} · ${item.asn || ''}</span>`;
+				topIpsEl.appendChild(li);
+			});
+		}
+
+		function updateAlerts(alerts) {
+			alertsEl.innerHTML = '';
+			(alerts || []).slice().reverse().forEach(a => {
+				const div = document.createElement('div');
+				div.className = `alert ${a.severity || 'low'}`;
+				div.innerHTML = `<strong>${a.title}</strong><div class="muted" style="margin-top:4px;">${a.detail}</div>`;
+				alertsEl.appendChild(div);
+			});
+		}
+
+		function updateNodeHealth(h) {
+			if (!h) { nodeHealthEl.textContent = 'n/a'; return; }
+			nodeHealthEl.textContent = `Healthy: ${h.healthy || 0} | Degraded: ${h.degraded || 0} | Under Attack: ${h.under_attack || 0}`;
+			nodeCounterEl.textContent = `Active Nodes: ${h.total || (h.healthy||0)+(h.degraded||0)+(h.under_attack||0)}`;
+		}
+
+		function updateNodes(nodes) {
+			markers.clearLayers();
+			(nodes || []).forEach(node => {
+				const color = node.status === 'under_attack' ? '#f87171' : node.status === 'degraded' ? '#f59e0b' : '#34d399';
+				const icon = L.divIcon({ className: 'node-icon', html: `<div style="width:12px;height:12px;border-radius:50%;background:${color};box-shadow:0 0 10px ${color};"></div>` });
+				L.marker([node.lat, node.lon], { icon }).bindPopup(`${node.name}<br>Status: ${node.status}`).addTo(markers);
+			});
+		}
+
+		function setSimStatus(ok) {
+			if (!simStatus) return;
+			simStatus.textContent = ok ? 'SIMULATED' : 'SIM DATA STALE';
+			simStatus.classList.toggle('badge-warn', !ok);
+		}
+
+		async function loadWidgets() {
+			try {
+				const res = await fetch('/api/sim/telemetry');
+				const data = await res.json();
+				setSimStatus(true);
+				updateThreat(data.threat_level || {});
+				updateProtocol(data.protocol_split || {});
+				updateTimeline(data.timeline_60m || {});
+				updateTopIps(data.top_attackers || []);
+				updateAlerts(data.alerts || []);
+				updateNodeHealth(data.node_health || {});
+				updateNodes(data.global_nodes || []);
+				if (data.stats) {
+					if (data.stats.total_events !== undefined) statTotal.textContent = data.stats.total_events;
+					if (data.stats.http_events !== undefined) statHttp.textContent = data.stats.http_events;
+					if (data.stats.ssh_events !== undefined) statSsh.textContent = data.stats.ssh_events;
+					if (data.stats.unique_ips !== undefined) statIps.textContent = data.stats.unique_ips;
+				}
+			} catch (err) {
+				setSimStatus(false);
+			}
+		}
+
+		function renderRow(evt) {
+			const tr = document.createElement('tr');
+			const cells = [
+				evt.timestamp ? new Date(evt.timestamp).toISOString().replace('T', ' ').replace('Z', '') : '—',
+				`<span class="chip ${evt.source === 'HTTP' ? 'http' : 'ssh'}">${evt.source}</span>`,
+				evt.event || 'n/a',
+				evt.ip || 'n/a',
+				evt.username || '—',
+				evt.password || '—',
+				evt.path || evt.message || evt.query || '—',
+			];
+			cells.forEach(c => {
+				const td = document.createElement('td');
+				td.innerHTML = c;
+				tr.appendChild(td);
+			});
+			return tr;
+		}
+
+		function initCharts() {
+			const protocolCtx = document.getElementById('protocol-chart');
+			protocolChart = new Chart(protocolCtx, {
+				type: 'doughnut',
+				data: { labels: ['SSH', 'HTTP'], datasets: [{ data: [1, 1], backgroundColor: ['#f97316', '#22d3ee'] }] },
+				options: { plugins: { legend: { labels: { color: '#e8ecf3' } } } }
+			});
+			const timelineCtx = document.getElementById('timeline-chart');
+			timelineChart = new Chart(timelineCtx, {
+				type: 'line',
+				data: { labels: [], datasets: [
+					{ label: 'SSH', data: [], borderColor: '#f97316', backgroundColor: '#f9731615', tension: 0.3, fill: true },
+					{ label: 'HTTP', data: [], borderColor: '#22d3ee', backgroundColor: '#22d3ee15', tension: 0.3, fill: true },
+				] },
+				options: { plugins: { legend: { labels: { color: '#e8ecf3' } } }, scales: { x: { ticks: { color: '#a5b4c6' } }, y: { ticks: { color: '#a5b4c6' } } } }
+			});
+		}
+
+		function initMap() {
+			map = L.map('map', { worldCopyJump: true, zoomControl: false }).setView([20, 0], 2);
+			L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+				attribution: '&copy; OpenStreetMap & Carto',
+				maxZoom: 6,
+			}).addTo(map);
+			markers.addTo(map);
+		}
+
+		async function loadEvents() {
+			try {
+				const res = await fetch('/api/events');
+				const data = await res.json();
+				tbody.innerHTML = '';
+				data.events.forEach(evt => tbody.appendChild(renderRow(evt)));
+				statTotal.textContent = data.stats.total_events;
+				statHttp.textContent = data.stats.http_events;
+				statSsh.textContent = data.stats.ssh_events;
+				statIps.textContent = data.stats.unique_ips;
+				lastUpdate.textContent = 'Last update: ' + data.stats.last_update;
+			} catch (err) {
+				lastUpdate.textContent = 'Failed to refresh: ' + err;
+			}
+		}
+
+		document.getElementById('refresh').addEventListener('click', loadEvents);
+		initCharts();
+		initMap();
+		loadEvents();
+		loadWidgets();
+		setInterval(loadEvents, 10000);
+		setInterval(loadWidgets, 8000);
+	</script>
+</body>
+</html>
