@@ -13,7 +13,7 @@ def create_dashboard_blueprint(config: Config) -> Blueprint:
 		http_events = log_reader.collect_http_events(config)
 		ssh_events = log_reader.collect_ssh_events(config)
 		combined = log_reader.combine_events(http_events, ssh_events, config.max_events)
-		computed_stats = stats.compute_dashboard_stats(config, http_events)
+		computed_stats = stats.compute_dashboard_stats(config, http_events, ssh_events)
 		return combined, computed_stats, http_events
 
 	@bp.route("/")
@@ -45,23 +45,24 @@ def create_dashboard_blueprint(config: Config) -> Blueprint:
 			"events": [log_reader.serialize_event(e) for e in events],
 			"stats": {
 				"count": len(events),
-				"last_update": stats.compute_dashboard_stats(config, events)["last_update"],
+				"last_update": stats.compute_dashboard_stats(config, events, log_reader.collect_ssh_events(config))["last_update"],
 			},
 			"log_path": str(config.http_log_path),
 		}
 		return jsonify(payload)
 
-	@bp.route("/api/ssh-events")
-	def api_ssh_events():
-		events = log_reader.collect_ssh_events(config)
-		payload = {
-			"events": [log_reader.serialize_event(e) for e in events],
-			"stats": {
-				"count": len(events),
-				"last_update": stats.compute_dashboard_stats(config, log_reader.collect_http_events(config))["last_update"],
-			},
-			"log_path": str(config.ssh_log_path),
-		}
-		return jsonify(payload)
+	@bp.route("/api/ingest", methods=["POST"])
+	def api_ingest():
+		from services.metrics_db import get_metrics_db
+		data = request.get_json()
+		if not data or not isinstance(data, list):
+			return jsonify({"error": "Expected list of events"}), 400
+		db = get_metrics_db(config)
+		events = []
+		for item in data:
+			if isinstance(item, dict):
+				events.append(item)
+		db.ingest_events(events)
+		return jsonify({"ingested": len(events)}), 200
 
 	return bp

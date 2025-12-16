@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 from typing import Any, Dict, List, Optional, Set
+import logging
 from urllib.parse import urlparse
 
 import requests
@@ -26,30 +27,30 @@ def format_stats_for_output(stats: Dict[str, Any]) -> Dict[str, Any]:
 
 def _fetch_cowrie_stats(config: Config) -> Dict[str, Any]:
 	result: Dict[str, Any] = {"ssh_attempts": None, "ssh_unique_ips": None, "ssh_ip_set": None}
-	if not config.cowrie_api_token:
-		return result
-	try:
-		resp = requests.get(
-			config.cowrie_exporter_stats_url,
-			headers={"X-API-Token": config.cowrie_api_token},
-			timeout=3,
-		)
-		if resp.status_code != 200:
-			return result
-		data = resp.json()
-		attempts = data.get("login_attempts")
-		result["ssh_attempts"] = attempts if isinstance(attempts, int) else None
-		ips_list = data.get("top_ips") or data.get("ips") or []
-		ip_set = {ip for ip in ips_list if ip}
-		if ip_set:
-			result["ssh_ip_set"] = ip_set
-			result["ssh_unique_ips"] = len(ip_set)
-		else:
-			unique_ips = data.get("unique_ips")
-			if isinstance(unique_ips, int):
-				result["ssh_unique_ips"] = unique_ips
-	except Exception:
-		return result
+	# Prefer Cowrie exporter API when token/URL provided, but fall back to log parsing
+	if config.cowrie_api_token and config.cowrie_exporter_stats_url:
+		try:
+			resp = requests.get(
+				config.cowrie_exporter_stats_url,
+				headers={"X-API-Token": config.cowrie_api_token},
+				timeout=3,
+			)
+			if resp.status_code == 200:
+				data = resp.json()
+				attempts = data.get("login_attempts")
+				result["ssh_attempts"] = attempts if isinstance(attempts, int) else None
+				ips_list = data.get("top_ips") or data.get("ips") or []
+				ip_set = {ip for ip in ips_list if ip}
+				if ip_set:
+					result["ssh_ip_set"] = ip_set
+					result["ssh_unique_ips"] = len(ip_set)
+				else:
+					unique_ips = data.get("unique_ips")
+					if isinstance(unique_ips, int):
+						result["ssh_unique_ips"] = unique_ips
+				return result
+		except Exception:
+			logging.getLogger(__name__).exception("Cowrie exporter API fetch failed; falling back to logs")
 	return result
 
 
@@ -86,47 +87,20 @@ def _fetch_http_stats(config: Config, http_events: Optional[List[Dict[str, Any]]
 	result["ip_set"] = ip_set
 	result["unique_ips"] = len(ip_set)
 	result["attempts"] = len(http_events)
+	logging.getLogger(__name__).info("Parsed HTTP events=%d unique_ips=%d", len(http_events), len(ip_set))
 	return result
 
 
-def compute_dashboard_stats(config: Config, http_events: List[Dict[str, Any]]) -> Dict[str, Any]:
-	http_stats = _fetch_http_stats(config, http_events)
-	ssh_stats = _fetch_cowrie_stats(config)
-
-	ssh_attempts_raw = ssh_stats.get("ssh_attempts")
-	ssh_attempts = ssh_attempts_raw if isinstance(ssh_attempts_raw, int) else 0
-	ssh_unique_ips = ssh_stats.get("ssh_unique_ips")
-	ssh_ip_set = ssh_stats.get("ssh_ip_set") or set()
-
-	http_attempts_raw = http_stats.get("attempts")
-	http_attempts = http_attempts_raw if isinstance(http_attempts_raw, int) else 0
-	http_unique_ips = http_stats.get("unique_ips")
-	http_ip_set = http_stats.get("ip_set") or set()
-
-	if ssh_ip_set and http_ip_set:
-		unique_union = len(ssh_ip_set.union(http_ip_set))
-		unique_display: Any = unique_union
-	elif ssh_ip_set:
-		unique_display = len(ssh_ip_set)
-	elif http_ip_set:
-		unique_display = len(http_ip_set)
-	else:
-		ssh_u = ssh_unique_ips if isinstance(ssh_unique_ips, int) else None
-		http_u = http_unique_ips if isinstance(http_unique_ips, int) else None
-		if ssh_u is not None or http_u is not None:
-			unique_display = f"SSH: {ssh_u or 0} | HTTP: {http_u or 0}"
-		else:
-			unique_display = None
-
-	ssh_events_display = ssh_attempts if ssh_attempts_raw is not None else (0 if config.cowrie_api_token else None)
-
-	stats = {
-		"total_events": ssh_attempts + http_attempts,
-		"http_events": http_attempts,
-		"ssh_events": ssh_events_display,
-		"unique_ips": unique_display,
-		"unique_ips_http": http_unique_ips if http_unique_ips is not None else (len(http_ip_set) if http_ip_set else None),
-		"unique_ips_ssh": ssh_unique_ips if ssh_unique_ips is not None else (len(ssh_ip_set) if ssh_ip_set else None),
-		"last_update": datetime.datetime.utcnow().replace(tzinfo=UTC).isoformat(),
-	}
-	return stats
+def compute_dashboard_stats(config: Config, http_events: List[Dict[str, Any]], ssh_events: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+	logger = logging.getLogger(__name__)
+	from services.metrics_db import get_metrics_db
+	db = get_metrics_db(config)
+	# Ingest latest events
+	if http_events:
+		db.ingest_events(http_events)
+	if ssh_events:
+		db.ingest_events(ssh_events)
+	# Get metrics from DB
+	metrics = db.get_metrics()
+	logger.info("Computed metrics: %s", metrics)
+	return metrics

@@ -12,7 +12,8 @@ def create_sim_blueprint(config: Config, sim: SimTelemetry) -> Blueprint:
 
 	def _payload():
 		http_events = log_reader.collect_http_events(config)
-		computed_stats = stats.format_stats_for_output(stats.compute_dashboard_stats(config, http_events))
+		ssh_events = log_reader.collect_ssh_events(config)
+		computed_stats = stats.format_stats_for_output(stats.compute_dashboard_stats(config, http_events, ssh_events))
 		return sim.payload(computed_stats)
 
 	@bp.route("/api/sim/telemetry")

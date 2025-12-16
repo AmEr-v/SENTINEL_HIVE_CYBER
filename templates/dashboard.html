@@ -150,12 +150,12 @@
 			</div>
 			<div class="card">
 				<h3>HTTP Attempts</h3>
-				<div class="value" id="stat-http">{{ stats.http_events }}</div>
+				<div class="value" id="stat-http">{{ stats.http_attempts }}</div>
 				<span class="badge warn">Edge honeypot</span>
 			</div>
 			<div class="card">
 				<h3>SSH Attempts</h3>
-				<div class="value" id="stat-ssh">{{ stats.ssh_events }}</div>
+				<div class="value" id="stat-ssh">{{ stats.ssh_attempts }}</div>
 				<span class="badge warn">Cowrie</span>
 			</div>
 			<div class="card">
@@ -346,9 +346,10 @@
 				updateNodeHealth(data.node_health || {});
 				updateNodes(data.global_nodes || []);
 				if (data.stats) {
+					console.log('Received stats:', data.stats);
 					if (data.stats.total_events !== undefined) statTotal.textContent = data.stats.total_events;
-					if (data.stats.http_events !== undefined) statHttp.textContent = data.stats.http_events;
-					if (data.stats.ssh_events !== undefined) statSsh.textContent = data.stats.ssh_events;
+					if (data.stats.http_attempts !== undefined) statHttp.textContent = data.stats.http_attempts;
+					if (data.stats.ssh_attempts !== undefined) statSsh.textContent = data.stats.ssh_attempts;
 					if (data.stats.unique_ips !== undefined) statIps.textContent = data.stats.unique_ips;
 				}
 			} catch (err) {
@@ -409,7 +410,7 @@
 				tbody.innerHTML = '';
 				data.events.forEach(evt => tbody.appendChild(renderRow(evt)));
 				statTotal.textContent = data.stats.total_events;
-				statHttp.textContent = data.stats.http_events;
+				statHttp.textContent = data.stats.http_attempts;
 				statSsh.textContent = data.stats.ssh_events;
 				statIps.textContent = data.stats.unique_ips;
 				lastUpdate.textContent = 'Last update: ' + data.stats.last_update;

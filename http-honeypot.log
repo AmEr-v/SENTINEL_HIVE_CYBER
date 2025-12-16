@@ -1,0 +1,4 @@
+{"time": "2025-12-16T10:00:00Z", "remote_addr": "192.168.1.100", "method": "GET", "path": "/", "query_string": "", "username": null, "password": null, "headers": {"User-Agent": "Mozilla/5.0"}}
+{"time": "2025-12-16T10:01:00Z", "remote_addr": "192.168.1.101", "method": "POST", "path": "/login", "query_string": "", "username": "admin", "password": "password", "headers": {"User-Agent": "curl/7.68.0"}}
+{"time": "2025-12-16T10:02:00Z", "remote_addr": "192.168.1.100", "method": "GET", "path": "/admin", "query_string": "", "username": null, "password": null, "headers": {"User-Agent": "Mozilla/5.0"}}
+{"time": "2025-12-16T11:00:00Z", "remote_addr": "192.168.1.102", "method": "GET", "path": "/new", "query_string": "", "username": null, "password": null, "headers": {"User-Agent": "Mozilla/5.0"}}
