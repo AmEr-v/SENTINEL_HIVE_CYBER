@@ -179,6 +179,17 @@ class MetricsDB:
         self._update_offset(str(ssh_path), ssh_path.stat().st_size if ssh_path.exists() else 0)
         logger.info("DEBUG: Parsed SSH events=%d", len(ssh_events))
 
+    def get_recent_events(self, limit: int = 500) -> List[Dict[str, Any]]:
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute("SELECT raw_json FROM events ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+            events = []
+            for row in rows:
+                try:
+                    events.append(json.loads(row[0]))
+                except:
+                    pass
+            return events
+
 
 def get_metrics_db(config: Config) -> MetricsDB:
     db_path = config.playback_db_path.parent / "telemetry.db"

@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, jsonify, render_template, request
 
 from config import Config
-from services import log_reader, stats
+from services import stats
 
 
 def create_dashboard_blueprint(config: Config) -> Blueprint:
 	bp = Blueprint("dashboard", __name__)
 
 	def _collect_events_with_stats():
-		http_events = log_reader.collect_http_events(config)
-		ssh_events = log_reader.collect_ssh_events(config)
-		combined = log_reader.combine_events(http_events, ssh_events, config.max_events)
-		computed_stats = stats.compute_dashboard_stats(config, http_events, ssh_events)
-		return combined, computed_stats, http_events
+		from services.metrics_db import get_metrics_db
+		db = get_metrics_db(config)
+		events = db.get_recent_events(config.max_events)
+		computed_stats = db.get_metrics()
+		return events, computed_stats, []
 
 	@bp.route("/")
 	def index():
@@ -51,12 +51,18 @@ def create_dashboard_blueprint(config: Config) -> Blueprint:
 		}
 		return jsonify(payload)
 
+	@bp.route("/api/metrics")
+	def api_metrics():
+		from services.metrics_db import get_metrics_db
+		db = get_metrics_db(config)
+		return jsonify(db.get_metrics())
+
 	@bp.route("/api/ingest", methods=["POST"])
 	def api_ingest():
-		from services.metrics_db import get_metrics_db
 		data = request.get_json()
 		if not data or not isinstance(data, list):
 			return jsonify({"error": "Expected list of events"}), 400
+		from services.metrics_db import get_metrics_db
 		db = get_metrics_db(config)
 		events = []
 		for item in data:

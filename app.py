@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import sys
+sys.path.append('.')
+
 from flask import Flask
 
 from config import load_config
