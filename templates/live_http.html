@@ -16,6 +16,9 @@
 		.sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
 		main { padding: 22px 24px 54px 24px; max-width: 1280px; margin: auto; }
 		.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+		.badge { display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid #1f2937; font-size: 12px; color: var(--muted); }
+		.badge.ok { border-color: #34d39966; color: #34d399; }
+		.badge.warn { border-color: #f59e0b66; color: #f59e0b; }
 		.nav { display: flex; gap: 10px; align-items: center; }
 		.nav-link { text-decoration: none; color: var(--muted); padding: 8px 12px; border-radius: 8px; border: 1px solid #1f2937; font-weight: 700; font-size: 13px; }
 		.nav-link:hover { border-color: var(--accent); color: var(--accent); }
@@ -46,6 +49,8 @@
 			</nav>
 			<button id="refresh">Refresh now</button>
 			<span class="pill" id="last-update">Last update: --</span>
+			<span class="badge" id="data-source">Data source: --</span>
+			<span class="badge" id="last-seen">Last event: --</span>
 		</div>
 	</header>
 
@@ -73,6 +78,10 @@
 	<script>
 		const tbody = document.getElementById('events-body');
 		const lastUpdate = document.getElementById('last-update');
+		const dataSourceEl = document.getElementById('data-source');
+		const lastSeenEl = document.getElementById('last-seen');
+		let lastEventTs = null;
+		let lastSeenTimer = null;
 
 		function renderRow(evt) {
 			const tr = document.createElement('tr');
@@ -90,6 +99,27 @@
 			return tr;
 		}
 
+		function setSourceLabel(source) {
+			if (!dataSourceEl) return;
+			dataSourceEl.textContent = 'Data source: ' + (source || 'n/a');
+			dataSourceEl.classList.toggle('ok', source === 'VM ingest');
+			dataSourceEl.classList.toggle('warn', source && source !== 'VM ingest');
+		}
+
+		function startLastSeenTimer() {
+			if (lastSeenTimer) return;
+			lastSeenTimer = setInterval(() => {
+				if (!lastSeenEl) return;
+				if (!lastEventTs) {
+					lastSeenEl.textContent = 'Last event: n/a';
+					return;
+				}
+				const now = Date.now();
+				const diffSec = Math.max(0, Math.floor((now - lastEventTs) / 1000));
+				lastSeenEl.textContent = 'Last event: ' + diffSec + 's ago';
+			}, 1000);
+		}
+
 		async function loadEvents() {
 			try {
 				const res = await fetch('/api/http-events');
@@ -97,6 +127,13 @@
 				tbody.innerHTML = '';
 				data.events.forEach(evt => tbody.appendChild(renderRow(evt)));
 				lastUpdate.textContent = 'Last update: ' + data.stats.last_update;
+				setSourceLabel(data.source);
+				if (data.events && data.events.length) {
+					const latest = data.events[0];
+					const ts = latest.timestamp ? Date.parse(latest.timestamp) : NaN;
+					if (!isNaN(ts)) lastEventTs = ts;
+				}
+				startLastSeenTimer();
 			} catch (err) {
 				lastUpdate.textContent = 'Failed to refresh: ' + err;
 			}

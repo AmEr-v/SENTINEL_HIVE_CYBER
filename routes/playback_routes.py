@@ -15,10 +15,12 @@ def create_playback_blueprint(config: Config, playback_db: PlaybackDB) -> Bluepr
 
 	@bp.route("/api/replay/range")
 	def api_replay_range():
+		playback_db.ingest_from_ssh_log()
 		return jsonify(playback_db.get_range())
 
 	@bp.route("/api/replay/query")
 	def api_replay_query():
+		playback_db.ingest_from_ssh_log()
 		start = request.args.get("start")
 		end = request.args.get("end")
 		try:

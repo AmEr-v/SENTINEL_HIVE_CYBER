@@ -180,13 +180,41 @@ class MetricsDB:
         logger.info("DEBUG: Parsed SSH events=%d", len(ssh_events))
 
     def get_recent_events(self, limit: int = 500) -> List[Dict[str, Any]]:
+        return self.get_events_page(limit=limit)
+
+    def get_recent_events_by_source(self, source: str, limit: int = 500) -> List[Dict[str, Any]]:
+        sql = "SELECT id, raw_json FROM events WHERE source = ? ORDER BY id DESC LIMIT ?"
         with sqlite3.connect(self.db_path) as conn:
-            rows = conn.execute("SELECT raw_json FROM events ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+            rows = conn.execute(sql, (source, limit)).fetchall()
             events = []
             for row in rows:
                 try:
-                    events.append(json.loads(row[0]))
-                except:
+                    payload = json.loads(row[1])
+                    if isinstance(payload, dict):
+                        payload["id"] = row[0]
+                        events.append(payload)
+                except Exception:
+                    pass
+            return events
+
+    def get_events_page(self, limit: int = 500, before_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        sql = "SELECT id, raw_json FROM events"
+        params: List[Any] = []
+        if before_id is not None:
+            sql += " WHERE id < ?"
+            params.append(before_id)
+        sql += " ORDER BY id DESC LIMIT ?"
+        params.append(limit)
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(sql, params).fetchall()
+            events = []
+            for row in rows:
+                try:
+                    payload = json.loads(row[1])
+                    if isinstance(payload, dict):
+                        payload["id"] = row[0]
+                        events.append(payload)
+                except Exception:
                     pass
             return events
 

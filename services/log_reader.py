@@ -38,7 +38,7 @@ def _load_json_lines(path: Path, max_lines: int) -> List[Dict[str, Any]]:
 	buf: Deque[Dict[str, Any]] = deque(maxlen=max_lines)
 	lines_read = 0
 	first_lines = []
-	last_lines = []
+	last_lines: Deque[str] = deque(maxlen=3)
 	try:
 		with path.open("r", encoding="utf-8") as handle:
 			for line_num, line in enumerate(handle, 1):
@@ -48,17 +48,12 @@ def _load_json_lines(path: Path, max_lines: int) -> List[Dict[str, Any]]:
 				lines_read += 1
 				if lines_read <= 3:
 					first_lines.append(line[:200] + "..." if len(line) > 200 else line)
+				last_lines.append(line[:200] + "..." if len(line) > 200 else line)
 				try:
 					buf.append(json.loads(line))
 				except Exception as e:
 					logger.warning("DEBUG: Skipping invalid JSON line %d: %s (error: %s)", line_num, line[:100], str(e))
 					continue
-				if lines_read > max_lines:
-					break
-			# Get last 3 lines
-			handle.seek(0)
-			all_lines = handle.readlines()
-			last_lines = [l.strip()[:200] + "..." if len(l.strip()) > 200 else l.strip() for l in all_lines[-3:]]
 	except Exception as e:
 		logger.exception("DEBUG: Failed to read JSON lines from %s", path)
 		return []
@@ -67,7 +62,7 @@ def _load_json_lines(path: Path, max_lines: int) -> List[Dict[str, Any]]:
 	if first_lines:
 		logger.info("DEBUG: First 3 lines: %s", first_lines)
 	if last_lines:
-		logger.info("DEBUG: Last 3 lines: %s", last_lines)
+		logger.info("DEBUG: Last 3 lines: %s", list(last_lines))
 	return items
 
 

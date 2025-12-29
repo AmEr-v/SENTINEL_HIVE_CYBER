@@ -30,10 +30,19 @@ class Config:
 
 def load_config() -> Config:
 	"""Load configuration from environment with sane defaults."""
-	http_log_env = os.getenv("HTTP_LOG_PATH", str(Path.home() / "http-honeypot.log"))
-	ssh_log_env = os.getenv(
-		"SSH_LOG_PATH", str(Path.home() / "cowrie" / "var" / "log" / "cowrie" / "cowrie.json")
-	)
+	cwd = Path.cwd()
+	http_log_env = os.getenv("HTTP_LOG_PATH")
+	if not http_log_env:
+		local_http = cwd / "http-honeypot.log"
+		http_log_env = str(local_http) if local_http.exists() else str(Path.home() / "http-honeypot.log")
+	ssh_log_env = os.getenv("SSH_LOG_PATH")
+	if not ssh_log_env:
+		local_ssh = cwd / "cowrie.json"
+		ssh_log_env = (
+			str(local_ssh)
+			if local_ssh.exists()
+			else str(Path.home() / "cowrie" / "var" / "log" / "cowrie" / "cowrie.json")
+		)
 	return Config(
 		http_log_path=Path(http_log_env).expanduser(),
 		ssh_log_path=Path(ssh_log_env).expanduser(),

@@ -297,7 +297,7 @@
 			topIpsEl.innerHTML = '';
 			(list || []).sort((a,b)=> (b.count||0)-(a.count||0)).slice(0,10).forEach(item => {
 				const li = document.createElement('li');
-				li.innerHTML = `<span>${item.ip} (${item.country || ''})</span><span>${item.count} · ${item.asn || ''}</span>`;
+				li.innerHTML = `<span>${item.ip} (${item.country || ''})</span><span>${item.count} | ${item.asn || ''}</span>`;
 				topIpsEl.appendChild(li);
 			});
 		}
@@ -411,7 +411,7 @@
 				data.events.forEach(evt => tbody.appendChild(renderRow(evt)));
 				statTotal.textContent = data.stats.total_events;
 				statHttp.textContent = data.stats.http_attempts;
-				statSsh.textContent = data.stats.ssh_events;
+				statSsh.textContent = data.stats.ssh_attempts;
 				statIps.textContent = data.stats.unique_ips;
 				lastUpdate.textContent = 'Last update: ' + data.stats.last_update;
 			} catch (err) {

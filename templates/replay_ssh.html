@@ -21,12 +21,12 @@
 		.nav-link:hover { border-color: var(--accent); color: var(--accent); }
 		.nav-active { border-color: var(--accent); color: var(--accent); }
 		.control-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
-		input, select { background: #111827; border: 1px solid #1f2937; color: var(--text); padding: 8px 10px; border-radius: 8px; font-family: var(--font); }
+		select { background: #111827; border: 1px solid #1f2937; color: var(--text); padding: 8px 10px; border-radius: 8px; font-family: var(--font); min-width: 360px; }
 		button { background: var(--accent); color: #0b1220; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 800; letter-spacing: 0.5px; font-size: 13.5px; box-shadow: 0 4px 12px #22d3ee44; }
 		button.secondary { background: #1f2937; color: var(--text); }
 		.pill { background: #1b2435; border-radius: 22px; padding: 6px 12px; font-size: 12px; color: var(--muted); border: 1px solid #1f2937; }
 		.info { color: var(--muted); margin: 10px 0; }
-		.terminal { background: #0b1220; border: 1px solid #1f2937; border-radius: 12px; padding: 12px; min-height: 320px; max-height: 70vh; overflow-y: auto; font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1.45; }
+		.terminal { background: #0b1220; border: 1px solid #1f2937; border-radius: 12px; padding: 12px; min-height: 320px; max-height: 70vh; overflow-y: auto; font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
 		.muted { color: var(--muted); }
 	</style>
 </head>
@@ -34,7 +34,7 @@
 	<header>
 		<div>
 			<div class="brand">Sentinel Hive / SSH Replay</div>
-			<div class="sub">Playback captured Cowrie SSH stream</div>
+			<div class="sub">Replay recorded Cowrie sessions from file</div>
 		</div>
 		<div class="actions">
 			<nav class="nav">
@@ -48,23 +48,15 @@
 	</header>
 
 	<main>
-		<div class="info">Choose a time window and play back stored SSH telemetry. Auto-scroll keeps you on the latest replayed line.</div>
-		<div class="info" id="range-info">Loading range…</div>
+		<div class="info">Select a recorded session file and start replay. Auto-scroll keeps you on the latest replayed line.</div>
+		<div class="info" id="range-info">Loading sessions.</div>
 		<div class="control-bar">
-			<label class="muted">Start <input type="datetime-local" id="start-time"></label>
-			<label class="muted">End <input type="datetime-local" id="end-time"></label>
-			<label class="muted">Speed
-				<select id="speed">
-					<option value="0.5">0.5x</option>
-					<option value="1" selected>1x</option>
-					<option value="2">2x</option>
-					<option value="5">5x</option>
-					<option value="10">10x</option>
-				</select>
+			<label class="muted">Session
+				<select id="session-select"></select>
 			</label>
-			<button id="play">Play</button>
-			<button id="pause" class="secondary">Pause</button>
-			<button id="reset" class="secondary">Reset</button>
+			<button id="play">Start replay</button>
+			<button id="pause" class="secondary">Stop</button>
+			<button id="reset" class="secondary">Clear</button>
 		</div>
 		<div class="pill" id="status">Idle</div>
 		<div class="terminal" id="replay-log"></div>
@@ -73,19 +65,14 @@
 	<script>
 		const rangeInfo = document.getElementById('range-info');
 		const logView = document.getElementById('replay-log');
-		const startInput = document.getElementById('start-time');
-		const endInput = document.getElementById('end-time');
-		const speedSelect = document.getElementById('speed');
+		const sessionSelect = document.getElementById('session-select');
 		const playBtn = document.getElementById('play');
 		const pauseBtn = document.getElementById('pause');
 		const resetBtn = document.getElementById('reset');
 		const statusEl = document.getElementById('status');
 
-		let rows = [];
-		let idx = 0;
-		let timer = null;
-		const BASE_INTERVAL = 400;
-		const LIMIT = 2000;
+		let sessions = [];
+		let currentController = null;
 
 		function setStatus(text) {
 			statusEl.textContent = text;
@@ -95,88 +82,90 @@
 			logView.scrollTop = logView.scrollHeight;
 		}
 
-		function toIsoOrNull(val) {
-			if (!val) return null;
-			const d = new Date(val);
-			return isNaN(d.getTime()) ? null : d.toISOString();
-		}
-
-		async function refreshRange() {
-			try {
-				const res = await fetch('/api/replay/range');
-				const data = await res.json();
-				rangeInfo.textContent = `Available: ${data.min_ts || 'n/a'} -> ${data.max_ts || 'n/a'} (rows: ${data.count || 0})`;
-			} catch (err) {
-				rangeInfo.textContent = 'Range unavailable: ' + err;
+		function stopReplay() {
+			if (currentController) {
+				currentController.abort();
+				currentController = null;
 			}
 		}
 
-		async function loadRows() {
-			setStatus('Loading...');
-			const params = new URLSearchParams();
-			const s = toIsoOrNull(startInput.value);
-			const e = toIsoOrNull(endInput.value);
-			if (s) params.set('start', s);
-			if (e) params.set('end', e);
-			params.set('limit', LIMIT.toString());
-			try {
-				const res = await fetch('/api/replay/query?' + params.toString());
-				const data = await res.json();
-				rows = data.rows || [];
-				idx = 0;
-				logView.textContent = '';
-				setStatus(`Loaded ${rows.length} lines`);
-			} catch (err) {
-				setStatus('Load failed: ' + err);
-				rows = [];
-				idx = 0;
-			}
-		}
-
-		function step() {
-			if (idx >= rows.length) {
-				stopPlayback();
-				setStatus('Playback finished');
+		function renderSessions() {
+			sessionSelect.innerHTML = '';
+			if (!sessions.length) {
+				rangeInfo.textContent = 'No sessions available';
+				const opt = document.createElement('option');
+				opt.value = '';
+				opt.textContent = 'No sessions';
+				sessionSelect.appendChild(opt);
 				return;
 			}
-			const row = rows[idx++];
-			logView.textContent += `[${row.ts}] ${row.line}\n`;
-			scrollToBottom();
+			rangeInfo.textContent = 'Sessions: ' + sessions.length + ' (newest first)';
+			sessions.forEach((sess, idx) => {
+				const opt = document.createElement('option');
+				opt.value = sess.session;
+				const ts = sess.timestamp ? new Date(sess.timestamp).toISOString().replace('T', ' ').replace('Z', '') : 'n/a';
+				opt.textContent = `${idx + 1}. ${ts} | ${sess.ip || 'n/a'} | ${sess.session}`;
+				sessionSelect.appendChild(opt);
+			});
 		}
 
-		function stopPlayback() {
-			if (timer) {
-				clearInterval(timer);
-				timer = null;
+		async function loadSessions() {
+			try {
+				const res = await fetch('/api/ssh-sessions');
+				const data = await res.json();
+				sessions = data.sessions || [];
+				renderSessions();
+			} catch (err) {
+				rangeInfo.textContent = 'Failed to load sessions: ' + err;
 			}
 		}
 
-		async function startPlayback() {
-			if (timer) return;
-			if (!rows.length || idx >= rows.length) {
-				await loadRows();
-			}
-			if (!rows.length) {
-				setStatus('No data to play');
+		async function startReplay() {
+			const sessionId = sessionSelect.value;
+			if (!sessionId) {
+				setStatus('Select a session');
 				return;
 			}
-			const interval = Math.max(50, BASE_INTERVAL / parseFloat(speedSelect.value || '1'));
-			timer = setInterval(step, interval);
-			setStatus('Playing');
-		}
-
-		function resetPlayback() {
-			stopPlayback();
-			idx = 0;
+			stopReplay();
 			logView.textContent = '';
-			setStatus('Reset');
+			setStatus('Replaying ' + sessionId + '...');
+			const ctrl = new AbortController();
+			currentController = ctrl;
+			try {
+				const res = await fetch('/api/ssh-session-replay/' + encodeURIComponent(sessionId), { signal: ctrl.signal });
+				if (!res.ok || !res.body) {
+					setStatus('Replay failed (HTTP ' + res.status + ')');
+					return;
+				}
+				const reader = res.body.getReader();
+				const decoder = new TextDecoder();
+				while (true) {
+					const { value, done } = await reader.read();
+					if (done) break;
+					logView.textContent += decoder.decode(value, { stream: true });
+					scrollToBottom();
+				}
+				setStatus('Replay finished');
+			} catch (err) {
+				if (err.name === 'AbortError') {
+					setStatus('Replay stopped');
+				} else {
+					setStatus('Replay error: ' + err);
+				}
+			}
 		}
 
-		playBtn.addEventListener('click', startPlayback);
-		pauseBtn.addEventListener('click', () => { stopPlayback(); setStatus('Paused'); });
-		resetBtn.addEventListener('click', () => { resetPlayback(); });
+		function clearOutput() {
+			stopReplay();
+			logView.textContent = '';
+			setStatus('Cleared');
+		}
 
-		refreshRange();
+		playBtn.addEventListener('click', startReplay);
+		pauseBtn.addEventListener('click', () => { stopReplay(); setStatus('Stopped'); });
+		resetBtn.addEventListener('click', () => { clearOutput(); });
+
+		loadSessions();
 	</script>
 </body>
 </html>

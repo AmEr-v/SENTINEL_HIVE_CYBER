@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import datetime
+import json
+import logging
 import queue
 import sqlite3
 import threading
@@ -35,6 +37,14 @@ class PlaybackDB:
 				"""
 			)
 			cur.execute("CREATE INDEX IF NOT EXISTS idx_ssh_lines_ts ON ssh_lines(ts)")
+			cur.execute(
+				"""
+				CREATE TABLE IF NOT EXISTS log_offsets (
+					file_path TEXT PRIMARY KEY,
+					offset INTEGER DEFAULT 0
+				)
+				"""
+			)
 			conn.commit()
 		except Exception:
 			try:
@@ -64,6 +74,68 @@ class PlaybackDB:
 		finally:
 			if owned:
 				conn.close()
+
+	def _get_offset(self, conn: sqlite3.Connection, file_path: str) -> int:
+		row = conn.execute("SELECT offset FROM log_offsets WHERE file_path = ?", (file_path,)).fetchone()
+		return row[0] if row else 0
+
+	def _update_offset(self, conn: sqlite3.Connection, file_path: str, offset: int) -> None:
+		conn.execute(
+			"INSERT OR REPLACE INTO log_offsets (file_path, offset) VALUES (?, ?)",
+			(file_path, offset),
+		)
+
+	def ingest_from_ssh_log(self, max_lines: int = 0) -> int:
+		ssh_path = self.config.ssh_log_path
+		if not ssh_path.exists() or not ssh_path.is_file():
+			return 0
+		inserted = 0
+		with sqlite3.connect(self.config.playback_db_path) as conn:
+			offset = self._get_offset(conn, str(ssh_path))
+			try:
+				with ssh_path.open("rb") as handle:
+					handle.seek(offset)
+					data = handle.read()
+					new_offset = handle.tell()
+			except Exception:
+				return 0
+			lines = data.decode("utf-8", errors="ignore").splitlines()
+			if max_lines > 0 and len(lines) > max_lines:
+				lines = lines[-max_lines:]
+			rows: List[Tuple[str, str]] = []
+			for line in lines:
+				raw = line.strip()
+				if not raw:
+					continue
+				ts = None
+				try:
+					entry = json.loads(raw)
+					raw_ts = entry.get("timestamp") or entry.get("time")
+					if raw_ts:
+						from services.log_reader import _parse_time
+						parsed = _parse_time(raw_ts)
+						if parsed:
+							ts = parsed.isoformat()
+				except Exception:
+					pass
+				if not ts:
+					ts = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+				rows.append((ts, raw))
+			if rows:
+				try:
+					conn.executemany("INSERT INTO ssh_lines (ts, line) VALUES (?, ?)", rows)
+					conn.commit()
+					inserted = len(rows)
+				except Exception:
+					try:
+						conn.rollback()
+					except Exception:
+						pass
+			self._update_offset(conn, str(ssh_path), new_offset)
+			conn.commit()
+		if inserted:
+			logging.getLogger(__name__).info("Ingested %d SSH log lines into playback DB", inserted)
+		return inserted
 
 	def _writer_loop(self) -> None:
 		conn = sqlite3.connect(self.config.playback_db_path, check_same_thread=False)
@@ -105,6 +177,7 @@ class PlaybackDB:
 			return
 		self.ensure_db()
 		self.cleanup_old_rows()
+		self.ingest_from_ssh_log()
 		self._writer_thread = threading.Thread(target=self._writer_loop, daemon=True)
 		self._writer_thread.start()
 
