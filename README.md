@@ -1,25 +1,53 @@
 # SENTINEL_HIVE_CYBER
 
-Sentinel Hive is a Flask-based dashboard for honeypot telemetry. It ingests HTTP honeypot logs and Cowrie SSH logs, stores normalized events, and renders live views, replay tools, and simulated global telemetry widgets for training and monitoring.
+```
++------------------------------------------------------------------+
+|  SENTINEL HIVE CYBER                                              |
+|  Threat Desk for Honeypot Telemetry                              |
++------------------------------------------------------------------+
+```
+
+![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/flask-2.3+-111827?style=flat-square&logo=flask&logoColor=white)
+![SQLite](https://img.shields.io/badge/sqlite-telemetry-0f172a?style=flat-square&logo=sqlite&logoColor=white)
+![Status](https://img.shields.io/badge/status-lab--ready-10b981?style=flat-square)
+
+Sentinel Hive is a Flask dashboard that ingests HTTP honeypot logs and Cowrie SSH logs, normalizes events, and renders live telemetry, session replay, and simulated global threat widgets. Built for cyber security labs, demos, and classroom use.
+
+## Contents
+
+- [Purpose](#purpose)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Data Flow](#data-flow-mermaid)
+- [Project Structure](#project-structure)
+- [Quick Start](#quick-start)
+- [VM Shipper](#vm-shipper-recommended)
+- [Configuration](#configuration)
+- [API Endpoints](#api-endpoints-key)
+- [Storage](#storage)
+- [Troubleshooting](#troubleshooting)
+- [Security Notes](#security-notes)
+- [Demo Checklist](#demo-checklist)
 
 ## Purpose
 
-This project provides a single-pane view of attacks against honeypots. It is designed for:
-- Real-time visibility into HTTP and SSH attempts.
-- Replay of Cowrie sessions for analysis and demos.
-- Lightweight ingestion from a VM into a Windows-hosted dashboard.
-- Educational use in cyber security labs.
+Sentinel Hive provides a single-pane view of honeypot activity with live visibility, replayable sessions, and clean metrics. It helps you:
+- Observe HTTP and SSH attack attempts in real time.
+- Replay Cowrie sessions for analysis and storytelling.
+- Move VM logs into a Windows-hosted dashboard with minimal setup.
+- Teach basic telemetry pipelines and SOC-style dashboards.
 
 ## Features
 
-- Live dashboard with total events, HTTP/SSH counts, unique IPs.
-- Live HTTP page with recent request attempts.
+- Live dashboard with total events, HTTP/SSH counts, and unique IPs.
+- Live HTTP page with recent request attempts and metadata.
 - Live SSH page with server-sent events (SSE) stream proxy.
 - Session replay from Cowrie tty logs.
 - Simulated global telemetry widgets (nodes, alerts, timeline).
-- SQLite-backed storage with simple deduping and retention.
+- SQLite-backed storage with deduping and retention.
 
-## Architecture Overview
+## Architecture
 
 Core pieces:
 - Flask app (`app.py`) with routes in `routes/`.
@@ -48,6 +76,16 @@ flowchart LR
 
     J[Local log parsing] --> D
     K[SimTelemetry] --> E
+
+    classDef source fill:#0f1b2e,stroke:#22d3ee,color:#e2e8f0;
+    classDef api fill:#0b1324,stroke:#f97316,color:#e2e8f0;
+    classDef db fill:#0c1526,stroke:#84cc16,color:#e2e8f0;
+    classDef ui fill:#111827,stroke:#38bdf8,color:#e2e8f0;
+
+    class A,C,H,J,K source;
+    class B,G,I api;
+    class D,F db;
+    class E ui;
 ```
 
 Notes:
