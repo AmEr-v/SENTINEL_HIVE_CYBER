@@ -5,36 +5,151 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Sentinel Hive - Live HTTP</title>
 	<style>
-		:root {
-			--bg: #0b1220; --panel: #0f172a; --card: #111827; --accent: #22d3ee; --accent-2: #f97316;
-			--text: #e8ecf3; --muted: #a5b4c6; --font: 'JetBrains Mono', 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
-		}
-		* { box-sizing: border-box; }
-		body { margin: 0; background: radial-gradient(circle at 20% 20%, #132644, var(--bg)); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.55; min-height: 100vh; }
-		header { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1f2937; background: linear-gradient(90deg, #0f172a, #0b1220); position: sticky; top: 0; z-index: 10; }
-		.brand { letter-spacing: 3px; text-transform: uppercase; color: var(--accent); font-weight: 800; font-size: 18px; }
-		.sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
-		main { padding: 22px 24px 54px 24px; max-width: 1280px; margin: auto; }
-		.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-		.badge { display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid #1f2937; font-size: 12px; color: var(--muted); }
-		.badge.ok { border-color: #34d39966; color: #34d399; }
-		.badge.warn { border-color: #f59e0b66; color: #f59e0b; }
-		.nav { display: flex; gap: 10px; align-items: center; }
-		.nav-link { text-decoration: none; color: var(--muted); padding: 8px 12px; border-radius: 8px; border: 1px solid #1f2937; font-weight: 700; font-size: 13px; }
-		.nav-link:hover { border-color: var(--accent); color: var(--accent); }
-		.nav-active { border-color: var(--accent); color: var(--accent); }
-		.table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid #1f2937; border-radius: 12px; padding: 8px; max-height: 75vh; }
-		table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-		th, td { padding: 10px 12px; border-bottom: 1px solid #1f2937; text-align: left; }
-		th { color: var(--muted); letter-spacing: 1px; text-transform: uppercase; font-size: 12.5px; background: #0f172a; position: sticky; top: 0; z-index: 1; }
-		tr:hover td { background: #0f1c33; }
-		.pill { background: #1b2435; border-radius: 22px; padding: 6px 12px; font-size: 12px; color: var(--muted); }
-		button { background: var(--accent); color: #0b1220; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 800; letter-spacing: 0.5px; font-size: 13.5px; box-shadow: 0 4px 12px #22d3ee44; }
-		.muted { color: var(--muted); }
-	</style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+:root {
+	--bg: #0b1220;
+	--panel: #0f172a;
+	--card: #0f1b2e;
+	--card-2: #0c1526;
+	--accent: #22d3ee;
+	--accent-2: #f97316;
+	--text: #e2e8f0;
+	--muted: #94a3b8;
+	--border: #1f2a44;
+	--shadow: 0 20px 50px rgba(2, 6, 23, 0.55);
+	--font-body: 'Space Grotesk', sans-serif;
+	--font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0;
+	min-height: 100vh;
+	color: var(--text);
+	font-family: var(--font-body);
+	font-size: 15px;
+	line-height: 1.6;
+	background:
+		radial-gradient(1200px circle at 15% -10%, #1b2a49 0%, rgba(27, 42, 73, 0) 60%),
+		radial-gradient(900px circle at 90% 0%, #12374d 0%, rgba(18, 55, 77, 0) 65%),
+		linear-gradient(180deg, #0b1220 0%, #0b1324 100%);
+}
+body::before {
+	content: "";
+	position: fixed;
+	inset: 0;
+	background:
+		repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.04) 0 1px, transparent 1px 140px),
+		repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.035) 0 1px, transparent 1px 90px);
+	pointer-events: none;
+	z-index: 0;
+}
+body::after {
+	content: "";
+	position: fixed;
+	inset: -10% auto auto -10%;
+	width: 420px;
+	height: 420px;
+	background: radial-gradient(circle, rgba(34, 211, 238, 0.18), transparent 70%);
+	pointer-events: none;
+	z-index: 0;
+}
+.app-header {
+	padding: 20px 28px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	border-bottom: 1px solid var(--border);
+	background: linear-gradient(110deg, rgba(15, 23, 42, 0.94), rgba(11, 18, 32, 0.92));
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	backdrop-filter: blur(14px);
+	box-shadow: 0 12px 30px rgba(2, 6, 23, 0.45);
+}
+.brand { letter-spacing: 4px; text-transform: uppercase; color: var(--accent); font-weight: 700; font-size: 19px; }
+.sub { color: var(--muted); font-size: 13px; margin-top: 6px; font-family: var(--font-mono); }
+.actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.action-group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.nav { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.nav-link {
+	text-decoration: none;
+	color: var(--muted);
+	padding: 8px 12px;
+	border-radius: 10px;
+	border: 1px solid var(--border);
+	font-weight: 600;
+	font-size: 13px;
+	background: rgba(15, 23, 42, 0.5);
+	transition: all 0.2s ease;
+}
+.nav-link:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.3), 0 8px 18px rgba(34, 211, 238, 0.15); }
+.nav-active { border-color: rgba(34, 211, 238, 0.7); color: var(--accent); background: linear-gradient(120deg, rgba(34, 211, 238, 0.18), rgba(34, 211, 238, 0.04)); }
+button {
+	background: linear-gradient(120deg, #22d3ee, #38bdf8);
+	color: #041318;
+	border: none;
+	padding: 10px 16px;
+	border-radius: 10px;
+	cursor: pointer;
+	font-weight: 700;
+	letter-spacing: 0.4px;
+	font-size: 13.5px;
+	box-shadow: 0 10px 20px rgba(34, 211, 238, 0.25);
+	transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+button:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(34, 211, 238, 0.35); }
+.app-main { padding: 24px 28px 60px; max-width: 1280px; margin: auto; position: relative; z-index: 1; }
+.status-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 18px 0 16px; }
+.status-card {
+	background: linear-gradient(160deg, var(--card) 0%, var(--card-2) 100%);
+	border: 1px solid var(--border);
+	padding: 14px 16px;
+	border-radius: 14px;
+	box-shadow: var(--shadow);
+	position: relative;
+	overflow: hidden;
+}
+.status-card::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(320px circle at 15% -10%, rgba(34, 211, 238, 0.12), transparent 60%);
+	opacity: 0.7;
+	pointer-events: none;
+}
+.status-card > * { position: relative; z-index: 1; }
+.status-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-family: var(--font-mono); }
+.status-value { font-size: 15px; font-weight: 600; margin-top: 6px; color: var(--text); }
+.status-value.ok { color: #34d399; }
+.status-value.warn { color: #f59e0b; }
+.log-path { font-family: var(--font-mono); font-size: 12px; color: #d7deea; line-height: 1.4; word-break: break-all; }
+.section-title { font-size: 16px; font-weight: 700; letter-spacing: 0.4px; }
+.section-sub { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: var(--font-mono); }
+.table-head { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 12px; }
+.table-wrap { overflow-x: auto; background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border); border-radius: 14px; padding: 10px; max-height: 75vh; box-shadow: var(--shadow); backdrop-filter: blur(6px); }
+.pill { background: rgba(15, 23, 42, 0.7); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--muted); border: 1px solid var(--border); font-family: var(--font-mono); }
+.muted { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: var(--font-mono); }
+th, td { padding: 10px 12px; border-bottom: 1px solid #1f2937; text-align: left; }
+th { color: var(--muted); letter-spacing: 1px; text-transform: uppercase; font-size: 11.5px; background: #0f172a; position: sticky; top: 0; z-index: 1; }
+tbody tr:nth-child(odd) td { background: rgba(12, 20, 36, 0.6); }
+tbody tr:hover td { background: rgba(34, 211, 238, 0.08); }
+
+@media (max-width: 900px) {
+	.app-header { flex-direction: column; align-items: flex-start; }
+	.actions { width: 100%; }
+}
+@media (max-width: 640px) {
+	.app-main { padding: 16px; }
+	th, td { white-space: nowrap; }
+}
+
+</style>
 </head>
 <body>
-	<header>
+	<header class="app-header">
 		<div>
 			<div class="brand">Sentinel Hive / Live HTTP</div>
 			<div class="sub">Edge honeypot request + credential attempts</div>
@@ -47,15 +162,40 @@
 				<a class="nav-link" href="/replay-ssh">Replay</a>
 				<a class="nav-link" href="/ssh-session-replay">Sessions</a>
 			</nav>
-			<button id="refresh">Refresh now</button>
-			<span class="pill" id="last-update">Last update: --</span>
-			<span class="badge" id="data-source">Data source: --</span>
-			<span class="badge" id="last-seen">Last event: --</span>
+			<div class="action-group">
+				<button id="refresh">Refresh now</button>
+				<span class="pill" id="last-update">Last update: --</span>
+			</div>
 		</div>
 	</header>
 
-	<main>
-		<div class="muted" style="margin-bottom:12px;">Log file: <span style="color:#d7deea;">{{ http_log }}</span> &nbsp;|&nbsp; Showing up to {{ max_events }} entries</div>
+	<main class="app-main">
+		<div class="status-grid">
+			<div class="status-card">
+				<div class="status-label">Pot ID</div>
+				<div class="status-value log-path">Pot ID 1</div>
+			</div>
+			<div class="status-card">
+				<div class="status-label">Data source</div>
+				<div class="status-value" id="data-source">--</div>
+			</div>
+			<div class="status-card">
+				<div class="status-label">Last event</div>
+				<div class="status-value" id="last-seen">--</div>
+			</div>
+			<div class="status-card">
+				<div class="status-label">Max entries</div>
+				<div class="status-value">{{ max_events }}</div>
+			</div>
+		</div>
+
+		<div class="table-head">
+			<div>
+				<div class="section-title">Live HTTP stream</div>
+				<div class="section-sub">Auto-refresh every 8s. Latest activity on top.</div>
+			</div>
+		</div>
+
 		<div class="table-wrap">
 			<table>
 				<thead>
@@ -101,7 +241,7 @@
 
 		function setSourceLabel(source) {
 			if (!dataSourceEl) return;
-			dataSourceEl.textContent = 'Data source: ' + (source || 'n/a');
+			dataSourceEl.textContent = source || 'n/a';
 			dataSourceEl.classList.toggle('ok', source === 'VM ingest');
 			dataSourceEl.classList.toggle('warn', source && source !== 'VM ingest');
 		}
@@ -111,12 +251,12 @@
 			lastSeenTimer = setInterval(() => {
 				if (!lastSeenEl) return;
 				if (!lastEventTs) {
-					lastSeenEl.textContent = 'Last event: n/a';
+					lastSeenEl.textContent = 'n/a';
 					return;
 				}
 				const now = Date.now();
 				const diffSec = Math.max(0, Math.floor((now - lastEventTs) / 1000));
-				lastSeenEl.textContent = 'Last event: ' + diffSec + 's ago';
+				lastSeenEl.textContent = diffSec + 's ago';
 			}, 1000);
 		}
 

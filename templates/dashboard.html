@@ -5,125 +5,218 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Sentinel Hive Dashboard</title>
 	<style>
-		:root {
-			--bg: #0b1220;
-			--panel: #0f172a;
-			--card: #111827;
-			--accent: #22d3ee;
-			--accent-2: #f97316;
-			--text: #e8ecf3;
-			--muted: #a5b4c6;
-			--danger: #f87171;
-			--success: #34d399;
-			--font: 'JetBrains Mono', 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
-		}
-		* { box-sizing: border-box; }
-		body {
-			margin: 0;
-			background: radial-gradient(circle at 20% 20%, #132644, var(--bg));
-			color: var(--text);
-			font-family: var(--font);
-			font-size: 14px;
-			line-height: 1.55;
-			min-height: 100vh;
-		}
-		header {
-			padding: 20px 24px;
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			border-bottom: 1px solid #1f2937;
-			background: linear-gradient(90deg, #0f172a, #0b1220);
-			position: sticky;
-			top: 0;
-			z-index: 10;
-		}
-		.brand { letter-spacing: 3px; text-transform: uppercase; color: var(--accent); font-weight: 800; font-size: 18px; }
-		.sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
-		main { padding: 22px 24px 54px 24px; max-width: 1280px; margin: auto; }
-		.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-		.card {
-			background: linear-gradient(160deg, #111827 0%, #0d1524 100%);
-			border: 1px solid #1f2937;
-			padding: 16px 18px;
-			border-radius: 12px;
-			box-shadow: 0 6px 28px #0b122055;
-		}
-		.card h3 { margin: 0 0 8px 0; font-size: 15px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
-		.card .value { font-size: 30px; font-weight: 800; color: var(--text); }
-		.badge { display: inline-block; padding: 5px 9px; border-radius: 7px; border: 1px solid #243045; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-		.badge.warn { border-color: var(--accent-2); color: var(--accent-2); }
-		.badge.ok { border-color: var(--success); color: var(--success); }
-		table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-		th, td { padding: 10px 12px; border-bottom: 1px solid #1f2937; text-align: left; }
-		th { color: var(--muted); letter-spacing: 1px; text-transform: uppercase; font-size: 12.5px; background: #0f172a; position: sticky; top: 0; z-index: 1; }
-		tr:hover td { background: #0f1c33; }
-		.chip { display: inline-block; padding: 3px 7px; border-radius: 5px; border: 1px solid #1f2937; font-size: 12px; font-weight: 700; }
-		.chip.http { border-color: var(--accent); color: var(--accent); }
-		.chip.ssh { border-color: var(--accent-2); color: var(--accent-2); }
-		.pill { background: #1b2435; border-radius: 22px; padding: 6px 12px; font-size: 12px; color: var(--muted); }
-		.muted { color: var(--muted); }
-		.footer { margin-top: 18px; color: var(--muted); font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
-		.log-path { font-family: var(--font); font-size: 12px; color: #d7deea; }
-		.table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid #1f2937; border-radius: 12px; padding: 8px; max-height: 70vh; }
-		.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-		.nav { display: flex; gap: 10px; align-items: center; }
-		.nav-link {
-			text-decoration: none;
-			color: var(--muted);
-			padding: 8px 12px;
-			border-radius: 8px;
-			border: 1px solid #1f2937;
-			font-weight: 700;
-			font-size: 13px;
-		}
-		.nav-link:hover { border-color: var(--accent); color: var(--accent); }
-		.nav-active { border-color: var(--accent); color: var(--accent); }
-		button {
-			background: var(--accent);
-			color: #0b1220;
-			border: none;
-			padding: 10px 14px;
-			border-radius: 8px;
-			cursor: pointer;
-			font-weight: 800;
-			letter-spacing: 0.5px;
-			font-size: 13.5px;
-			box-shadow: 0 4px 12px #22d3ee44;
-		}
-		button.secondary { background: #1f2937; color: var(--text); }
-		.widget-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 18px; }
-		.widget-card { background: linear-gradient(160deg, #111827 0%, #0d1524 100%); border: 1px solid #1f2937; padding: 14px; border-radius: 12px; box-shadow: 0 6px 22px #0b122055; }
-		.widget-title { margin: 0 0 8px 0; color: var(--muted); font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
-		.threat-bar { width: 100%; height: 14px; background: #1b2435; border-radius: 999px; overflow: hidden; border: 1px solid #243045; }
-		.threat-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #22d3ee, #f97316, #f43f5e); transition: width 0.6s ease; }
-		.badge-status { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid #1f2937; }
-		.badge-ok { color: #34d399; border-color: #34d39944; }
-		.badge-warn { color: #f59e0b; border-color: #f59e0b44; }
-		.badge-crit { color: #f87171; border-color: #f8717144; }
-		.legend { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
-		.legend span { display: inline-flex; align-items: center; gap: 6px; }
-		.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-		.dot-green { background: #34d399; }
-		.dot-orange { background: #f59e0b; }
-		.dot-red { background: #f87171; animation: pulse 1.2s infinite; }
-		@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(248,113,113,0.45);} 70% { box-shadow: 0 0 0 10px rgba(248,113,113,0);} 100% { box-shadow: 0 0 0 0 rgba(248,113,113,0);} }
-		#map { width: 100%; height: 320px; border-radius: 12px; overflow: hidden; border: 1px solid #1f2937; }
-		.list-compact { list-style: none; padding: 0; margin: 0; }
-		.list-compact li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #1f2937; font-size: 13px; }
-		.alert { background: #1b2435; border: 1px solid #243045; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
-		.alert.high { border-color: #f87171; color: #fca5a5; }
-		.alert.med { border-color: #f59e0b; color: #fbbf24; }
-		.alert.low { border-color: #22d3ee; color: #67e8f9; }
-		@media (max-width: 640px) {
-			header { flex-direction: column; align-items: flex-start; gap: 10px; }
-			main { padding: 16px; }
-			th, td { white-space: nowrap; }
-		}
-	</style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+:root {
+	--bg: #0b1220;
+	--panel: #0f172a;
+	--card: #0f1b2e;
+	--card-2: #0c1526;
+	--accent: #22d3ee;
+	--accent-2: #f97316;
+	--accent-3: #84cc16;
+	--text: #e2e8f0;
+	--muted: #94a3b8;
+	--border: #1f2a44;
+	--shadow: 0 20px 50px rgba(2, 6, 23, 0.55);
+	--font-body: 'Space Grotesk', sans-serif;
+	--font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0;
+	min-height: 100vh;
+	color: var(--text);
+	font-family: var(--font-body);
+	font-size: 15px;
+	line-height: 1.6;
+	background:
+		radial-gradient(1200px circle at 15% -10%, #1b2a49 0%, rgba(27, 42, 73, 0) 60%),
+		radial-gradient(900px circle at 90% 0%, #12374d 0%, rgba(18, 55, 77, 0) 65%),
+		linear-gradient(180deg, #0b1220 0%, #0b1324 100%);
+}
+body::before {
+	content: "";
+	position: fixed;
+	inset: 0;
+	background:
+		repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.04) 0 1px, transparent 1px 140px),
+		repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.035) 0 1px, transparent 1px 90px);
+	pointer-events: none;
+	z-index: 0;
+}
+body::after {
+	content: "";
+	position: fixed;
+	inset: -10% auto auto -10%;
+	width: 480px;
+	height: 480px;
+	background: radial-gradient(circle, rgba(34, 211, 238, 0.18), transparent 70%);
+	pointer-events: none;
+	z-index: 0;
+}
+.app-header {
+	padding: 20px 28px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	border-bottom: 1px solid var(--border);
+	background: linear-gradient(110deg, rgba(15, 23, 42, 0.94), rgba(11, 18, 32, 0.92));
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	backdrop-filter: blur(14px);
+	box-shadow: 0 12px 30px rgba(2, 6, 23, 0.45);
+}
+.brand { letter-spacing: 4px; text-transform: uppercase; color: var(--accent); font-weight: 700; font-size: 19px; }
+.sub { color: var(--muted); font-size: 13px; margin-top: 6px; font-family: var(--font-mono); }
+.app-main { padding: 24px 28px 70px; max-width: 1280px; margin: auto; position: relative; z-index: 1; }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.card {
+	background: linear-gradient(160deg, var(--card) 0%, var(--card-2) 100%);
+	border: 1px solid var(--border);
+	padding: 18px 20px;
+	border-radius: 14px;
+	box-shadow: var(--shadow);
+	position: relative;
+	overflow: hidden;
+}
+.card::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient(420px circle at 10% -10%, rgba(34, 211, 238, 0.18), transparent 60%),
+		radial-gradient(280px circle at 80% -20%, rgba(249, 115, 22, 0.18), transparent 55%);
+	opacity: 0.7;
+	pointer-events: none;
+}
+.card > * { position: relative; z-index: 1; }
+.card h3 { margin: 0 0 8px 0; font-size: 13px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; font-family: var(--font-mono); }
+.card .value { font-size: 32px; font-weight: 700; letter-spacing: 0.6px; background: linear-gradient(90deg, #e2e8f0, #67e8f9); -webkit-background-clip: text; color: transparent; }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid #24354f; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; background: rgba(15, 23, 42, 0.7); }
+.badge.warn { border-color: rgba(249, 115, 22, 0.6); color: #fdba74; }
+.badge.ok { border-color: rgba(52, 211, 153, 0.6); color: #34d399; }
+.table-wrap { overflow-x: auto; background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border); border-radius: 14px; padding: 10px; max-height: 70vh; box-shadow: var(--shadow); backdrop-filter: blur(6px); }
+.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.nav { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.nav-link {
+	text-decoration: none;
+	color: var(--muted);
+	padding: 8px 12px;
+	border-radius: 10px;
+	border: 1px solid var(--border);
+	font-weight: 600;
+	font-size: 13px;
+	background: rgba(15, 23, 42, 0.5);
+	transition: all 0.2s ease;
+}
+.nav-link:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.3), 0 8px 18px rgba(34, 211, 238, 0.15); }
+.nav-active { border-color: rgba(34, 211, 238, 0.7); color: var(--accent); background: linear-gradient(120deg, rgba(34, 211, 238, 0.18), rgba(34, 211, 238, 0.04)); }
+button {
+	background: linear-gradient(120deg, #22d3ee, #38bdf8);
+	color: #041318;
+	border: none;
+	padding: 10px 16px;
+	border-radius: 10px;
+	cursor: pointer;
+	font-weight: 700;
+	letter-spacing: 0.4px;
+	font-size: 13.5px;
+	box-shadow: 0 10px 20px rgba(34, 211, 238, 0.25);
+	transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+button:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(34, 211, 238, 0.35); }
+button.secondary { background: #1f2937; color: var(--text); box-shadow: none; }
+.widget-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 14px; align-items: start; }
+.widget-card { background: linear-gradient(160deg, var(--card) 0%, var(--card-2) 100%); border: 1px solid var(--border); padding: 16px; border-radius: 14px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.widget-card::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(320px circle at 20% -10%, rgba(34, 211, 238, 0.12), transparent 60%);
+	opacity: 0.7;
+	pointer-events: none;
+}
+.widget-card > * { position: relative; z-index: 1; }
+.widget-title { margin: 0 0 8px 0; color: var(--muted); font-size: 12.5px; letter-spacing: 1.2px; text-transform: uppercase; font-family: var(--font-mono); }
+.threat-bar { width: 100%; height: 14px; background: #1b2435; border-radius: 999px; overflow: hidden; border: 1px solid #243045; }
+.threat-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #22d3ee, #f97316, #f43f5e); transition: width 0.6s ease; }
+.threat-card { border-color: rgba(34, 211, 238, 0.25); }
+.threat-pips { display: flex; gap: 6px; margin-top: 10px; }
+.threat-pips span { flex: 1; height: 6px; border-radius: 999px; background: #1c263a; box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.15); }
+.threat-pips span.active { background: linear-gradient(90deg, #22d3ee, #38bdf8); }
+.threat-pips span.active.warn { background: linear-gradient(90deg, #f97316, #f59e0b); }
+.threat-pips span.active.critical { background: linear-gradient(90deg, #f97316, #f43f5e); }
+.threat-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.threat-metric { background: rgba(11, 18, 32, 0.65); border: 1px solid #22314a; border-radius: 12px; padding: 10px 12px; }
+.threat-metric .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-family: var(--font-mono); }
+.threat-metric .metric-value { font-size: 18px; font-weight: 700; margin-top: 4px; }
+.threat-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; border: 1px solid #22314a; background: rgba(15, 23, 42, 0.65); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; font-family: var(--font-mono); }
+.threat-status.low { color: #34d399; border-color: rgba(52, 211, 153, 0.55); }
+.threat-status.med { color: #f59e0b; border-color: rgba(245, 158, 11, 0.6); }
+.threat-status.high { color: #f97316; border-color: rgba(249, 115, 22, 0.6); }
+.threat-status.critical { color: #f87171; border-color: rgba(248, 113, 113, 0.6); }
+.threat-orbit { position: absolute; right: -48px; bottom: -48px; width: 150px; height: 150px; border-radius: 50%; border: 1px dashed rgba(34, 211, 238, 0.3); opacity: 0.6; pointer-events: none; }
+.badge-status { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid #1f2937; }
+.badge-ok { color: #34d399; border-color: #34d39944; }
+.badge-warn { color: #f59e0b; border-color: #f59e0b44; }
+.badge-crit { color: #f87171; border-color: #f8717144; }
+.legend { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot-green { background: #34d399; }
+.dot-orange { background: #f59e0b; }
+.dot-red { background: #f87171; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.45);} 70% { box-shadow: 0 0 0 10px rgba(248, 113, 113, 0);} 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0);} }
+#map { width: 100%; height: 320px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.08); }
+.list-compact { list-style: none; padding: 0; margin: 0; font-family: var(--font-mono); }
+.list-compact li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1f2937; font-size: 12.5px; }
+.alert { background: #1b2435; border: 1px solid #243045; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.alert.high { border-color: #f87171; color: #fca5a5; }
+.alert.med { border-color: #f59e0b; color: #fbbf24; }
+.alert.low { border-color: #22d3ee; color: #67e8f9; }
+.chip { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 8px; border: 1px solid #1f2937; font-size: 12px; font-weight: 700; }
+.chip.http { border-color: rgba(34, 211, 238, 0.7); color: #67e8f9; background: rgba(34, 211, 238, 0.08); }
+.chip.ssh { border-color: rgba(249, 115, 22, 0.7); color: #fdba74; background: rgba(249, 115, 22, 0.08); }
+.pill { background: rgba(15, 23, 42, 0.7); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--muted); border: 1px solid var(--border); font-family: var(--font-mono); }
+.muted { color: var(--muted); }
+.footer { margin-top: 18px; color: var(--muted); font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; font-family: var(--font-mono); }
+.log-path { font-family: var(--font-mono); font-size: 12px; color: #d7deea; }
+#events-table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: var(--font-mono); }
+th, td { padding: 10px 12px; border-bottom: 1px solid #1f2937; text-align: left; }
+th { color: var(--muted); letter-spacing: 1px; text-transform: uppercase; font-size: 11.5px; background: #0f172a; position: sticky; top: 0; z-index: 1; }
+#events-table tbody tr:nth-child(odd) td { background: rgba(12, 20, 36, 0.6); }
+#events-table tbody tr:hover td { background: rgba(34, 211, 238, 0.08); }
+
+.card, .widget-card, .table-wrap { opacity: 0; transform: translateY(12px); animation: rise 0.6s ease forwards; }
+.grid .card:nth-child(1) { animation-delay: 0.05s; }
+.grid .card:nth-child(2) { animation-delay: 0.12s; }
+.grid .card:nth-child(3) { animation-delay: 0.2s; }
+.grid .card:nth-child(4) { animation-delay: 0.28s; }
+.widget-grid .widget-card:nth-child(1) { animation-delay: 0.1s; }
+.widget-grid .widget-card:nth-child(2) { animation-delay: 0.18s; }
+.widget-grid .widget-card:nth-child(3) { animation-delay: 0.26s; }
+.widget-grid .widget-card:nth-child(4) { animation-delay: 0.34s; }
+.table-wrap { animation-delay: 0.4s; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 900px) {
+	.app-header { flex-direction: column; align-items: flex-start; }
+	.actions { width: 100%; }
+}
+@media (max-width: 640px) {
+	.app-main { padding: 16px; }
+	th, td { white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.card, .widget-card, .table-wrap { animation: none; opacity: 1; transform: none; }
+}
+</style>
 </head>
 <body>
-	<header>
+	<header class="app-header">
 		<div>
 			<div class="brand">Sentinel Hive / Threat Desk</div>
 			<div class="sub">Live honeypot telemetry from SSH and HTTP traps</div>
@@ -141,7 +234,7 @@
 		</div>
 	</header>
 
-	<main>
+	<main class="app-main">
 		<div class="grid">
 			<div class="card">
 				<h3>Total Events</h3>
@@ -168,16 +261,33 @@
 		<div style="margin: 18px 0 10px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
 			<div class="muted">Live feed of SSH and HTTP attack attempts</div>
 			<div class="actions">
-				<span class="pill">HTTP log: <span class="log-path">{{ http_log }}</span></span>
+				<span class="pill">HTTP log: <span class="log-path">Pot ID 1, located somewere</span></span>
 				<span class="pill">SSH source: <span class="log-path">{{ ssh_source }}</span></span>
 			</div>
 		</div>
 
 		<div class="widget-grid">
-			<div class="widget-card">
+			<div class="widget-card threat-card">
 				<h4 class="widget-title">Threat Level</h4>
 				<div class="threat-bar"><div id="threat-fill" class="threat-fill"></div></div>
-				<div id="threat-label" class="muted" style="margin-top:8px; font-weight:700;">Calculating…</div>
+				<div class="threat-pips" id="threat-pips">
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+				</div>
+				<div class="threat-meta">
+					<div class="threat-metric">
+						<div class="metric-label">Score</div>
+						<div id="threat-score" class="metric-value">--</div>
+					</div>
+					<div class="threat-metric">
+						<div class="metric-label">Status</div>
+						<div id="threat-status" class="threat-status">--</div>
+					</div>
+				</div>
+				<div id="threat-label" class="muted" style="margin-top:8px; font-weight:700;">Calculating.</div>
+				<div class="threat-orbit"></div>
 			</div>
 			<div class="widget-card">
 				<h4 class="widget-title">Protocol Split</h4>
@@ -261,6 +371,9 @@
 		const statIps = document.getElementById('stat-ips');
 		const threatFill = document.getElementById('threat-fill');
 		const threatLabel = document.getElementById('threat-label');
+		const threatScoreEl = document.getElementById('threat-score');
+		const threatStatusEl = document.getElementById('threat-status');
+		const threatPips = document.querySelectorAll('#threat-pips span');
 		const topIpsEl = document.getElementById('top-ips');
 		const alertsEl = document.getElementById('alerts');
 		const nodeHealthEl = document.getElementById('node-health');
@@ -272,11 +385,47 @@
 		let map;
 		let markers = L.layerGroup();
 
-		function updateThreat(threat) {
-			const score = threat && typeof threat.score === 'number' ? threat.score : 0;
-			threatFill.style.width = Math.min(100, score) + '%';
-			threatLabel.textContent = `Threat Level: ${threat?.label || 'N/A'} (${score})`;
+		function threatLevelFromLabel(label) {
+			const value = (label || '').toLowerCase();
+			if (value === 'critical') return 4;
+			if (value === 'high') return 3;
+			if (value === 'medium' || value === 'med') return 2;
+			if (value === 'low') return 1;
+			return 0;
 		}
+
+		function updateThreat(threat) {
+			const score = threat && typeof threat.score === 'number' ? Math.round(threat.score) : 0;
+			const label = threat && threat.label ? String(threat.label).toUpperCase() : 'N/A';
+			const labelKey = label.toLowerCase();
+			threatFill.style.width = Math.min(100, score) + '%';
+			threatLabel.textContent = `Threat Level: ${label} (${score})`;
+			if (threatScoreEl) {
+				threatScoreEl.textContent = String(score);
+			}
+			if (threatStatusEl) {
+				const statusClass = labelKey === 'medium' ? 'med' : labelKey;
+				threatStatusEl.textContent = label;
+				threatStatusEl.classList.remove('low', 'med', 'high', 'critical');
+				if (['low', 'med', 'high', 'critical'].includes(statusClass)) {
+					threatStatusEl.classList.add(statusClass);
+				}
+			}
+			const levelFromLabel = threatLevelFromLabel(labelKey);
+			const levelFromScore = score >= 75 ? 4 : score >= 50 ? 3 : score >= 25 ? 2 : score > 0 ? 1 : 0;
+			const level = levelFromLabel || levelFromScore;
+			const variant = level >= 4 ? 'critical' : level >= 3 ? 'warn' : '';
+			if (threatPips.length) {
+				threatPips.forEach((pip, index) => {
+					pip.classList.remove('active', 'warn', 'critical');
+					if (index < level) {
+						pip.classList.add('active');
+						if (variant) pip.classList.add(variant);
+					}
+				});
+			}
+		}
+
 
 		function updateProtocol(split) {
 			if (!protocolChart) return;
