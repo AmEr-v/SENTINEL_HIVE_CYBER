@@ -32,6 +32,13 @@ class LogShipper:
     def read_new_lines(self, path: Path, offset: int) -> tuple[List[str], int]:
         if not path.exists():
             return [], 0
+        try:
+            size = path.stat().st_size
+        except OSError:
+            return [], offset
+        if size < offset:
+            logger.info(f"Log rotated or truncated, resetting offset: {path}")
+            offset = 0
         with open(path, 'rb') as f:
             f.seek(offset)
             data = f.read()

@@ -49,6 +49,14 @@ class LogShipper:
         offset = self.offsets.get(str(path), 0)
         if not path.exists():
             return []
+        try:
+            size = path.stat().st_size
+        except OSError:
+            return []
+        if size < offset:
+            logger.info(f"Log rotated or truncated, resetting offset: {path}")
+            offset = 0
+            self.offsets[str(path)] = 0
         with open(path, 'rb') as f:
             f.seek(offset)
             data = f.read()

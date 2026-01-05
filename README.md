@@ -40,6 +40,11 @@ The shipper tails the logs and POSTs new events every 5 seconds.
 - **SSH Attempts**: Count of `cowrie.login.failed` and `cowrie.login.success` events.
 - **Real-Time**: Metrics update as events are ingested from DB.
 
+### Data Retention
+
+- `PLAYBACK_RETENTION_DAYS` controls how long SSH replay lines are kept.
+- Default is 0 (keep forever). Set a positive number to auto-delete older entries.
+
 ### Proof Test
 
 1. Delete `telemetry.db` on Windows

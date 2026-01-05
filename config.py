@@ -52,7 +52,7 @@ def load_config() -> Config:
 			"http://10.0.96.70:8088/stream/cowrie-log?token=CHANGE_THIS_TO_LONG_RANDOM",
 		),
 		playback_db_path=Path(os.getenv("PLAYBACK_DB_PATH", "data/playback.db")).expanduser(),
-		playback_retention_days=int(os.getenv("PLAYBACK_RETENTION_DAYS", "7")),
+		playback_retention_days=int(os.getenv("PLAYBACK_RETENTION_DAYS", "0")),
 		cowrie_tty_path=Path(os.getenv("COWRIE_TTY_PATH", "/cowrie/var/lib/cowrie/tty")).expanduser(),
 		playlog_bin=Path(os.getenv("PLAYLOG_BIN", "/cowrie/bin/playlog")).expanduser(),
 		cowrie_exporter_stats_url=os.getenv(
