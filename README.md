@@ -60,65 +60,42 @@ Core pieces:
 ## 🗺️ Data Flow (Mermaid)
 
 ```mermaid
-flowchart TB
-    %% ========== TOP SOURCES ==========
-    subgraph TOP[ ]
-        direction LR
-        HTTP[HTTP Honeypot\n• HTTP Logs]:::source
-        COW[Cowrie SSH Honeypot\n• SSH Logs]:::source
-    end
+flowchart LR
+    %% SOURCES
+    A[HTTP Honeypot] -->|HTTP Logs| L[Local Log Parsing]
+    C[Cowrie SSH Honeypot] -->|SSH Logs| S[VM Shipper]
 
-    %% ========== INGEST LAYER ==========
-    subgraph INGEST[ ]
-        direction LR
-        PARSE[Local Log Parsing]:::proc
-        SHIP[VM Shipper\n(vm_shipper.py)]:::proc
-        API((API\n/api/ingest)):::api
-    end
+    %% INGEST API
+    L --> B[/api/ingest/]
+    S --> B
 
-    HTTP --> PARSE
-    COW --> SHIP
-    PARSE --> API
-    SHIP --> API
+    %% DATABASES
+    B --> D[(telemetry.db)]
+    B --> F[(playback.db)]
 
-    %% ========== STORAGE ==========
-    subgraph STORAGE[ ]
-        direction LR
-        TEL[(Telemetry.db\nMetrics & Events)]:::db
-        PLAY[(Playback.db\nSSH Replay Data)]:::db
-    end
+    %% LIVE STREAM
+    H[Cowrie Exporter SSE] --> I[/ssh-stream-proxy/]
+    I --> F
+    I --> E
 
-    API --> TEL
-    API --> PLAY
+    %% DASHBOARD
+    D --> E[Dashboard]
+    D --> M[Live SSH & HTTP]
+    F --> R[Session Replay]
 
-    %% ========== LIVE STREAM / REPLAY PIPE ==========
-    SSE[Cowrie Exporter SSE]:::source --> PROXY((/ssh-stream-proxy)):::api
-    PROXY --> PLAY
-    PROXY --> LIVE
+    %% SIMULATED DATA
+    K[SimTelemetry] --> E
 
-    %% ========== DASHBOARD UI ==========
-    subgraph UI[Dashboard]
-        direction LR
-        DASH[Dashboard]:::ui
-        LIVE[Live SSH & HTTP]:::ui
-        REPLAY[Session Replay]:::ui
-    end
+    %% STYLES
+    classDef source fill:#0f1b2e,stroke:#22d3ee,color:#e2e8f0;
+    classDef api fill:#0b1324,stroke:#f97316,color:#e2e8f0;
+    classDef db fill:#0c1526,stroke:#84cc16,color:#e2e8f0;
+    classDef ui fill:#111827,stroke:#38bdf8,color:#e2e8f0;
 
-    TEL --> DASH
-    TEL --> LIVE
-    PLAY --> REPLAY
-
-    %% ========== SIMULATED DATA ==========
-    SIM[Simulated Data\n• Threat Level\n• Alerts\n(keeps it "live")]:::sim
-    SIM --> DASH
-
-    %% ========== STYLES ==========
-    classDef source fill:#0f1b2e,stroke:#22d3ee,color:#e2e8f0,stroke-width:2px;
-    classDef proc   fill:#0b1324,stroke:#a3a3a3,color:#e2e8f0,stroke-width:2px;
-    classDef api    fill:#0b1324,stroke:#f97316,color:#e2e8f0,stroke-width:2px;
-    classDef db     fill:#0c1526,stroke:#84cc16,color:#e2e8f0,stroke-width:2px;
-    classDef ui     fill:#111827,stroke:#38bdf8,color:#e2e8f0,stroke-width:2px;
-    classDef sim    fill:#0c1526,stroke:#ef4444,color:#e2e8f0,stroke-width:2px;
+    class A,C,H,K source;
+    class B,I api;
+    class D,F db;
+    class E,M,R ui;
 
 ```
 
