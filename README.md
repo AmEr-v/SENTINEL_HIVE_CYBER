@@ -30,7 +30,7 @@ Sentinel Hive is a Flask dashboard that ingests HTTP honeypot logs and Cowrie SS
 - [Security Notes](#security-notes)
 - [Demo Checklist](#demo-checklist)
 
-## Purpose
+## 🧭 Purpose
 
 Sentinel Hive provides a single-pane view of honeypot activity with live visibility, replayable sessions, and clean metrics. It helps you:
 - Observe HTTP and SSH attack attempts in real time.
@@ -38,7 +38,7 @@ Sentinel Hive provides a single-pane view of honeypot activity with live visibil
 - Move VM logs into a Windows-hosted dashboard with minimal setup.
 - Teach basic telemetry pipelines and SOC-style dashboards.
 
-## Features
+## 🧩 Features
 
 - Live dashboard with total events, HTTP/SSH counts, and unique IPs.
 - Live HTTP page with recent request attempts and metadata.
@@ -47,7 +47,7 @@ Sentinel Hive provides a single-pane view of honeypot activity with live visibil
 - Simulated global telemetry widgets (nodes, alerts, timeline).
 - SQLite-backed storage with deduping and retention.
 
-## Architecture
+## 🧱 Architecture
 
 Core pieces:
 - Flask app (`app.py`) with routes in `routes/`.
@@ -57,7 +57,7 @@ Core pieces:
 - Optional Cowrie exporter SSE stream for live SSH.
 - Optional stats APIs for Cowrie/HTTP exporters.
 
-## Data Flow (Mermaid)
+## 🗺️ Data Flow (Mermaid)
 
 ```mermaid
 flowchart LR
@@ -92,7 +92,7 @@ Notes:
 - If VM ingest is not active, the dashboard can fall back to local log parsing.
 - SSH replay requires access to Cowrie tty files and the `playlog` binary.
 
-## Project Structure
+## 🗂️ Project Structure
 
 ```
 app.py                  # Flask app entrypoint
@@ -105,7 +105,7 @@ shipper.py              # Older shipper (kept for reference)
 data/                   # SQLite databases
 ```
 
-## Quick Start
+## 🧰 Quick Start
 
 Install dependencies on the dashboard host:
 
@@ -123,7 +123,7 @@ Open:
 - `http://<HOST>:5000/` (Dashboard)
 - `/live-http`, `/live-ssh`, `/replay-ssh`, `/ssh-session-replay`
 
-## VM Shipper (Recommended)
+## 🛰️ VM Shipper (Recommended)
 
 Install on the VM:
 
@@ -142,7 +142,7 @@ Behavior:
 - Tracks offsets in `offsets.json`.
 - Retries on failure with exponential backoff.
 
-## Configuration
+## 🧪 Configuration
 
 Environment variables (defaults in `config.py`):
 
@@ -164,7 +164,7 @@ Environment variables (defaults in `config.py`):
 - `PORT` (default: `5000`)
 - `FLASK_DEBUG` (default: `false`)
 
-## API Endpoints (Key)
+## 🧾 API Endpoints (Key)
 
 - `GET /` Dashboard UI
 - `GET /api/events` Recent events + stats
@@ -180,13 +180,13 @@ Environment variables (defaults in `config.py`):
 - `GET /api/ssh-sessions` Session list
 - `GET /api/ssh-session-replay/<session_id>` Stream replay
 
-## Storage
+## 🗃️ Storage
 
 - `data/telemetry.db` stores normalized events and metrics.
 - `data/playback.db` stores SSH replay lines.
 - Retention for playback is controlled by `PLAYBACK_RETENTION_DAYS`.
 
-## Troubleshooting
+## 🧯 Troubleshooting
 
 - No data on dashboard:
   - Check `HTTP_LOG_PATH` and `SSH_LOG_PATH`.
@@ -198,15 +198,14 @@ Environment variables (defaults in `config.py`):
 - Live SSH stream disconnected:
   - Verify `EXPORTER_SSH_STREAM_URL` and token.
 
-## Security Notes
+## 🛡️ Security Notes
 
 The ingest endpoint does not use authentication. If you expose this dashboard beyond a lab network, add protections (reverse proxy, firewall, or a shared token).
 
-## Demo Checklist
+## 🧷 Demo Checklist
 
 1. Delete `data/telemetry.db`.
 2. Start the dashboard: `python app.py`.
 3. Start `vm_shipper.py` on the VM.
 4. Generate a few HTTP requests + SSH login failures.
 5. Confirm metrics and tables update in real time.
-
