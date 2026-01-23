@@ -508,20 +508,41 @@ th { color: var(--muted); letter-spacing: 1px; text-transform: uppercase; font-s
 
 		function renderRow(evt) {
 			const tr = document.createElement('tr');
-			const cells = [
-				evt.timestamp ? new Date(evt.timestamp).toISOString().replace('T', ' ').replace('Z', '') : '—',
-				`<span class="chip ${evt.source === 'HTTP' ? 'http' : 'ssh'}">${evt.source}</span>`,
-				evt.event || 'n/a',
-				evt.ip || 'n/a',
-				evt.username || '—',
-				evt.password || '—',
-				evt.path || evt.message || evt.query || '—',
-			];
-			cells.forEach(c => {
-				const td = document.createElement('td');
-				td.innerHTML = c;
-				tr.appendChild(td);
-			});
+			const tsText = evt.timestamp ? new Date(evt.timestamp).toISOString().replace('T', ' ').replace('Z', '') : '-';
+			const source = evt.source || 'n/a';
+			const sourceClass = source === 'HTTP' ? 'http' : source === 'SSH' ? 'ssh' : '';
+			const pathText = evt.path || evt.message || evt.query || '-';
+
+			const tdTime = document.createElement('td');
+			tdTime.textContent = tsText;
+			tr.appendChild(tdTime);
+
+			const tdSource = document.createElement('td');
+			const chip = document.createElement('span');
+			chip.className = `chip ${sourceClass}`.trim();
+			chip.textContent = source;
+			tdSource.appendChild(chip);
+			tr.appendChild(tdSource);
+
+			const tdEvent = document.createElement('td');
+			tdEvent.textContent = evt.event || 'n/a';
+			tr.appendChild(tdEvent);
+
+			const tdIp = document.createElement('td');
+			tdIp.textContent = evt.ip || 'n/a';
+			tr.appendChild(tdIp);
+
+			const tdUser = document.createElement('td');
+			tdUser.textContent = evt.username || '-';
+			tr.appendChild(tdUser);
+
+			const tdPass = document.createElement('td');
+			tdPass.textContent = evt.password || '-';
+			tr.appendChild(tdPass);
+
+			const tdPath = document.createElement('td');
+			tdPath.textContent = pathText;
+			tr.appendChild(tdPath);
 			return tr;
 		}
 

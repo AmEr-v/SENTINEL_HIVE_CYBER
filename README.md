@@ -164,9 +164,9 @@ Environment variables (defaults in `config.py`):
 - `PLAYBACK_RETENTION_DAYS` (default: `0` = keep forever)
 - `COWRIE_TTY_PATH` (default: `/cowrie/var/lib/cowrie/tty`)
 - `PLAYLOG_BIN` (default: `/cowrie/bin/playlog`)
-- `EXPORTER_SSH_STREAM_URL` (default: `http://<IP>:8088/stream/cowrie-log?token=CHANGE_THIS_TO_LONG_RANDOM`)
+- `EXPORTER_SSH_STREAM_URL` (default: `http://<IP>:8088/stream/cowrie-json?token=CHANGE_THIS_TO_LONG_RANDOM`; if `COWRIE_API_TOKEN` is set you can omit the query token)
 - `COWRIE_EXPORTER_STATS_URL` (default: `http://<IP>:8088/stats/cowrie`)
-- `COWRIE_API_TOKEN` (default: empty)
+- `COWRIE_API_TOKEN` (default: empty, accepts `API_TOKEN` alias; used for exporter stats + SSE auth)
 - `HTTP_EXPORTER_BASE_URL` (default: empty)
 - `HTTP_API_TOKEN` (default: empty)
 - `SIM_NODE_TARGET` (default: `600`)
@@ -207,7 +207,9 @@ Environment variables (defaults in `config.py`):
   - Ensure Cowrie tty files are accessible on the dashboard host.
   - Ensure `PLAYLOG_BIN` points to a valid `playlog` binary.
 - Live SSH stream disconnected:
-  - Verify `EXPORTER_SSH_STREAM_URL` and token.
+  - Verify `EXPORTER_SSH_STREAM_URL` and token (query `?token=`) or set `COWRIE_API_TOKEN`/`API_TOKEN` to match the exporter.
+  - If the exporter returns 401, the dashboard will not show any live SSH lines.
+  - If `cowrie.log` is empty (common with `twistd -n`), use `/stream/cowrie-json` instead.
 
 ## 🛡️ Security Notes
 

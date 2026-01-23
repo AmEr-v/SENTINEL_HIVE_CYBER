@@ -49,16 +49,16 @@ def load_config() -> Config:
 		max_events=int(os.getenv("MAX_EVENTS", "500")),
 		exporter_ssh_stream_url=os.getenv(
 			"EXPORTER_SSH_STREAM_URL",
-			"http://10.0.96.70:8088/stream/cowrie-log?token=CHANGE_THIS_TO_LONG_RANDOM",
+			"http://10.0.96.189:8088/stream/cowrie-json?token=CHANGE_THIS_TO_LONG_RANDOM",
 		),
 		playback_db_path=Path(os.getenv("PLAYBACK_DB_PATH", "data/playback.db")).expanduser(),
 		playback_retention_days=int(os.getenv("PLAYBACK_RETENTION_DAYS", "0")),
 		cowrie_tty_path=Path(os.getenv("COWRIE_TTY_PATH", "/cowrie/var/lib/cowrie/tty")).expanduser(),
 		playlog_bin=Path(os.getenv("PLAYLOG_BIN", "/cowrie/bin/playlog")).expanduser(),
 		cowrie_exporter_stats_url=os.getenv(
-			"COWRIE_EXPORTER_STATS_URL", "http://10.0.96.70:8088/stats/cowrie"
+			"COWRIE_EXPORTER_STATS_URL", "http://10.0.96.189:8088/stats/cowrie"
 		).strip(),
-		cowrie_api_token=os.getenv("COWRIE_API_TOKEN"),
+		cowrie_api_token=os.getenv("COWRIE_API_TOKEN") or os.getenv("API_TOKEN"),
 		http_exporter_base_url=os.getenv("HTTP_EXPORTER_BASE_URL", "").rstrip("/"),
 		http_api_token=os.getenv("HTTP_API_TOKEN"),
 		sim_node_target=int(os.getenv("SIM_NODE_TARGET", "600")),

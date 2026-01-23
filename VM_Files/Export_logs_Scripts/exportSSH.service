@@ -6,6 +6,7 @@ After=network-online.target
 User=hive
 Group=cowrie
 WorkingDirectory=/opt/cowrie-exporter
+EnvironmentFile=-/etc/cowrie-exporter.env
 Environment=API_TOKEN=CHANGE_THIS_TO_LONG_RANDOM
 ExecStart=/opt/cowrie-exporter/venv/bin/python exporter.py
 Restart=always

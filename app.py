@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import os
 sys.path.append('.')
 
 from flask import Flask
@@ -16,12 +17,19 @@ from services.playback_db import PlaybackDB
 from services.sim_telemetry import SimTelemetry
 
 
+def _should_start_background_threads(config) -> bool:
+	if not config.flask_debug:
+		return True
+	return os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+
+
 def create_app() -> Flask:
 	config = load_config()
 	app = Flask(__name__, template_folder="templates")
 
 	playback_db = PlaybackDB(config)
-	playback_db.start()
+	if _should_start_background_threads(config):
+		playback_db.start()
 	sim = SimTelemetry(config)
 
 	app.config["APP_CONFIG"] = config

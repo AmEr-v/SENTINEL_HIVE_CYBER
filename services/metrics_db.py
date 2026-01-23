@@ -4,7 +4,6 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
@@ -133,29 +132,35 @@ class MetricsDB:
             conn.execute("INSERT OR REPLACE INTO file_offsets (file_path, offset) VALUES (?, ?)", (file_path, offset))
             conn.commit()
 
-    def _load_json_lines_incremental(self, path: Path, max_lines: int, offset: int) -> List[Dict[str, Any]]:
-        """Load JSONL from offset."""
+    def _load_json_lines_incremental(
+        self,
+        path: Path,
+        max_lines: int,
+        offset: int,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """Load up to max_lines JSONL records from a file offset and return the new offset."""
         if not path.exists() or not path.is_file():
-            return []
-        buf: Deque[Dict[str, Any]] = deque(maxlen=max_lines)
+            return [], offset
+        buf: List[Dict[str, Any]] = []
+        new_offset = offset
         try:
             with path.open("rb") as handle:
                 handle.seek(offset)
-                remaining = handle.read()
-                lines = remaining.decode("utf-8", errors="ignore").splitlines()
-                for line in lines:
-                    line = line.strip()
+                while len(buf) < max_lines:
+                    line = handle.readline()
                     if not line:
+                        break
+                    new_offset = handle.tell()
+                    text = line.decode("utf-8", errors="ignore").strip()
+                    if not text:
                         continue
                     try:
-                        buf.append(json.loads(line))
+                        buf.append(json.loads(text))
                     except Exception:
                         continue
-                    if len(buf) >= max_lines:
-                        break
         except Exception:
-            return []
-        return list(buf)
+            return [], offset
+        return buf, new_offset
 
     def ingest_from_logs(self, config: Config):
         logger = logging.getLogger(__name__)
@@ -163,20 +168,20 @@ class MetricsDB:
         http_path = config.http_log_path
         logger.info("DEBUG: Ingesting HTTP log: path=%s, exists=%s, size=%d", http_path, http_path.exists(), http_path.stat().st_size if http_path.exists() else 0)
         offset = self._get_offset(str(http_path))
-        http_raw = self._load_json_lines_incremental(http_path, config.max_events * 2, offset)
+        http_raw, http_offset = self._load_json_lines_incremental(http_path, config.max_events * 2, offset)
         http_events = log_reader.normalize_http_events(http_raw)
         self.ingest_events(http_events)
-        self._update_offset(str(http_path), http_path.stat().st_size if http_path.exists() else 0)
+        self._update_offset(str(http_path), http_offset)
         logger.info("DEBUG: Parsed HTTP events=%d", len(http_events))
         
         # SSH
         ssh_path = config.ssh_log_path
         logger.info("DEBUG: Ingesting SSH log: path=%s, exists=%s, size=%d", ssh_path, ssh_path.exists(), ssh_path.stat().st_size if ssh_path.exists() else 0)
         offset = self._get_offset(str(ssh_path))
-        ssh_raw = self._load_json_lines_incremental(ssh_path, config.max_events * 2, offset)
+        ssh_raw, ssh_offset = self._load_json_lines_incremental(ssh_path, config.max_events * 2, offset)
         ssh_events = log_reader.normalize_ssh_events(ssh_raw)
         self.ingest_events(ssh_events)
-        self._update_offset(str(ssh_path), ssh_path.stat().st_size if ssh_path.exists() else 0)
+        self._update_offset(str(ssh_path), ssh_offset)
         logger.info("DEBUG: Parsed SSH events=%d", len(ssh_events))
 
     def get_recent_events(self, limit: int = 500) -> List[Dict[str, Any]]:

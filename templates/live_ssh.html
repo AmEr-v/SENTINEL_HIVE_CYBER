@@ -101,7 +101,7 @@ button {
 button:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(34, 211, 238, 0.35); }
 button.ghost { background: rgba(15, 23, 42, 0.6); color: var(--text); border: 1px solid var(--border); box-shadow: none; }
 .app-main { padding: 24px 28px 60px; max-width: 1280px; margin: auto; position: relative; z-index: 1; }
-.status-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 18px 0 16px; }
+.status-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 18px 0 16px; overflow: visible; }
 .status-card {
 	background: linear-gradient(160deg, var(--card) 0%, var(--card-2) 100%);
 	border: 1px solid var(--border);
@@ -111,6 +111,8 @@ button.ghost { background: rgba(15, 23, 42, 0.6); color: var(--text); border: 1p
 	position: relative;
 	overflow: hidden;
 }
+.status-card.dropdown-card { overflow: visible; z-index: 5; }
+.status-card.honeypot-card { padding-bottom: 290px; }
 .status-card::before {
 	content: "";
 	position: absolute;
@@ -126,6 +128,7 @@ button.ghost { background: rgba(15, 23, 42, 0.6); color: var(--text); border: 1p
 .conn-status { display: inline-flex; align-items: center; gap: 6px; }
 .conn-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #34d399; display: inline-block; }
 .conn-status.warn::before { background: #f59e0b; }
+.conn-status.offline::before { background: #ef4444; }
 .log-path { font-family: var(--font-mono); font-size: 12px; color: #d7deea; line-height: 1.4; word-break: break-all; }
 .section-title { font-size: 16px; font-weight: 700; letter-spacing: 0.4px; }
 .section-sub { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: var(--font-mono); }
@@ -133,6 +136,98 @@ button.ghost { background: rgba(15, 23, 42, 0.6); color: var(--text); border: 1p
 .log-wrap { background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
 .log-view { margin: 0; padding: 14px; background: rgba(7, 12, 22, 0.9); color: #e2e8f0; font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; font-family: var(--font-mono); max-height: 75vh; overflow-y: auto; }
 .muted { color: var(--muted); }
+.feed-status { margin-left: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-family: var(--font-mono); }
+.feed-status.online { color: #34d399; }
+.feed-status.offline { color: #ef4444; }
+.pot-select { position: relative; margin-top: 8px; }
+.pot-toggle {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 10px 12px;
+	border-radius: 10px;
+	border: 1px solid var(--border);
+	background: rgba(15, 23, 42, 0.75);
+	color: var(--text);
+	font-weight: 600;
+	font-size: 13px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+.pot-toggle:hover { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.25); }
+.pot-toggle .left { display: inline-flex; align-items: center; gap: 8px; }
+.pot-toggle .chev { font-family: var(--font-mono); color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.online { background: #34d399; }
+.dot.offline { background: #ef4444; }
+.pot-menu {
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 0;
+	right: 0;
+	background: rgba(12, 21, 38, 0.96);
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	box-shadow: var(--shadow);
+	padding: 6px;
+	display: none;
+	z-index: 30;
+	max-height: 260px;
+	overflow-y: auto;
+}
+.pot-menu.open { display: block; }
+.pot-option {
+	width: 100%;
+	background: transparent;
+	border: 1px solid transparent;
+	color: var(--text);
+	border-radius: 10px;
+	padding: 10px 10px;
+	display: grid;
+	grid-template-columns: 12px 1fr auto;
+	grid-template-rows: auto auto;
+	column-gap: 10px;
+	row-gap: 4px;
+	text-align: left;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+.pot-option:hover { border-color: rgba(34, 211, 238, 0.4); background: rgba(15, 23, 42, 0.6); }
+.pot-ip { font-weight: 600; font-size: 13px; }
+.pot-status { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-family: var(--font-mono); }
+.pot-status.online { color: #34d399; }
+.pot-status.offline { color: #ef4444; }
+.pot-sub { grid-column: 2 / -1; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.pot-select.open + .status-hint { opacity: 0; height: 0; margin-top: 0; overflow: hidden; }
+.pot-details { margin-top: 12px; display: grid; gap: 10px; }
+.pot-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-family: var(--font-mono); }
+.pot-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pot-tile {
+	background: rgba(8, 14, 26, 0.7);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	padding: 8px 10px;
+}
+.pot-tile-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-family: var(--font-mono); }
+.pot-tile-value { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.pot-tile-value.online { color: #34d399; }
+.pot-tile-value.offline { color: #ef4444; }
+.pot-kv { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; font-family: var(--font-mono); color: var(--muted); }
+.pot-kv-label { text-transform: uppercase; letter-spacing: 1px; }
+.pot-kv-value { color: #cbd5f0; }
+.pot-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.pot-badge {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 4px 8px;
+	background: rgba(15, 23, 42, 0.6);
+	color: var(--muted);
+}
 
 @media (max-width: 900px) {
 	.app-header { flex-direction: column; align-items: flex-start; }
@@ -165,20 +260,71 @@ button.ghost { background: rgba(15, 23, 42, 0.6); color: var(--text); border: 1p
 		<div class="status-grid">
 			<div class="status-card">
 				<div class="status-label">Connection</div>
-				<div id="conn-status" class="status-value conn-status">Connected</div>
+				<div id="conn-status" class="status-value conn-status warn">Connecting...</div>
 			</div>
 			<div class="status-card">
 				<div class="status-label">Feed</div>
-				<div class="status-value">Cowrie SSH (10.0.96.70)</div>
+				<div class="status-value">
+					Cowrie SSH (<span id="feed-ip">{{ exporter_host }}</span>)
+					<span id="feed-status" class="feed-status online">Online</span>
+				</div>
 			</div>
 			<div class="status-card">
 				<div class="status-label">Auto-follow</div>
 				<button id="follow-toggle" class="ghost">Auto-follow: ON</button>
 				<div class="status-hint muted">Pins to latest activity</div>
 			</div>
-			<div class="status-card">
-				<div class="status-label">Pot ID</div>
-				<div class="status-value log-path">Pot ID 1</div>
+			<div class="status-card dropdown-card honeypot-card">
+				<div class="status-label">Honeypot</div>
+				<div id="pot-select" class="pot-select">
+					<button id="pot-toggle" class="pot-toggle" type="button">
+						<span class="left">
+							<span id="pot-dot" class="dot online"></span>
+							<span id="pot-label">{{ exporter_host }}</span>
+						</span>
+						<span class="chev">v</span>
+					</button>
+					<div id="pot-menu" class="pot-menu" aria-hidden="true"></div>
+				</div>
+				<div id="pot-meta" class="status-hint muted">Atlas | Primary | Lab A</div>
+				<div class="pot-details">
+					<div class="pot-section-title">Selected pot</div>
+					<div class="pot-detail-grid">
+						<div class="pot-tile">
+							<div class="pot-tile-label">Status</div>
+							<div id="pot-status-text" class="pot-tile-value online">Online</div>
+						</div>
+						<div class="pot-tile">
+							<div class="pot-tile-label">Last ping</div>
+							<div id="pot-last-seen" class="pot-tile-value">12s ago</div>
+						</div>
+						<div class="pot-tile">
+							<div class="pot-tile-label">Latency</div>
+							<div id="pot-latency" class="pot-tile-value">18ms</div>
+						</div>
+						<div class="pot-tile">
+							<div class="pot-tile-label">Role</div>
+							<div id="pot-role" class="pot-tile-value">Primary</div>
+						</div>
+						<div class="pot-tile">
+							<div class="pot-tile-label">Location</div>
+							<div id="pot-location" class="pot-tile-value">Lab A</div>
+						</div>
+						<div class="pot-tile">
+							<div class="pot-tile-label">Activity</div>
+							<div id="pot-activity" class="pot-tile-value">42 lines / 5m</div>
+						</div>
+					</div>
+					<div class="pot-kv">
+						<span class="pot-kv-label">Exporter</span>
+						<span id="pot-exporter" class="pot-kv-value">{{ exporter_path }}</span>
+					</div>
+					<div class="pot-kv">
+						<span class="pot-kv-label">Notes</span>
+						<span id="pot-notes" class="pot-kv-value">Cowrie exporter</span>
+					</div>
+					<div id="pot-badges" class="pot-badges"></div>
+				</div>
 			</div>
 		</div>
 
@@ -198,7 +344,134 @@ button.ghost { background: rgba(15, 23, 42, 0.6); color: var(--text); border: 1p
 		const logView = document.getElementById('log-view');
 		const followBtn = document.getElementById('follow-toggle');
 		const connStatus = document.getElementById('conn-status');
+		const feedIp = document.getElementById('feed-ip');
+		const feedStatus = document.getElementById('feed-status');
+		const potSelect = document.getElementById('pot-select');
+		const potToggle = document.getElementById('pot-toggle');
+		const potMenu = document.getElementById('pot-menu');
+		const potLabel = document.getElementById('pot-label');
+		const potDot = document.getElementById('pot-dot');
+		const potMeta = document.getElementById('pot-meta');
+		const potStatusText = document.getElementById('pot-status-text');
+		const potLastSeen = document.getElementById('pot-last-seen');
+		const potLatency = document.getElementById('pot-latency');
+		const potRole = document.getElementById('pot-role');
+		const potLocation = document.getElementById('pot-location');
+		const potActivity = document.getElementById('pot-activity');
+		const potExporter = document.getElementById('pot-exporter');
+		const potNotes = document.getElementById('pot-notes');
+		const potBadges = document.getElementById('pot-badges');
 		let followOn = true;
+		let src = null;
+		let lastStatusMessage = '';
+
+		const pots = [
+			{
+				id: 'pot-1',
+				ip: {{ exporter_host | tojson }},
+				name: 'Atlas',
+				role: 'Primary',
+				location: 'Lab A',
+				notes: 'Cowrie exporter',
+				lastSeen: '12s ago',
+				latency: '18ms',
+				activity: '42 lines / 5m',
+				exporter: {{ exporter_path | tojson }},
+				tags: ['cowrie', 'sse', 'ssh'],
+				status: 'online',
+				stream: true
+			},
+			{
+				id: 'pot-2',
+				ip: '10.0.96.210',
+				name: 'Rook',
+				role: 'Decoy',
+				location: 'Lab B',
+				notes: 'Maintenance window',
+				lastSeen: '2h ago',
+				latency: '--',
+				activity: '0 lines / 5m',
+				exporter: ':8088 /stream/cowrie-log',
+				tags: ['decoy', 'offline', 'lab-b'],
+				status: 'offline',
+				stream: false
+			},
+			{
+				id: 'pot-3',
+				ip: '10.0.96.155',
+				name: 'Vega',
+				role: 'Edge',
+				location: 'Classroom',
+				notes: 'Telemetry paused',
+				lastSeen: '46m ago',
+				latency: '--',
+				activity: '0 lines / 5m',
+				exporter: ':8088 /stream/cowrie-log',
+				tags: ['edge', 'offline', 'classroom'],
+				status: 'offline',
+				stream: false
+			},
+			{
+				id: 'pot-4',
+				ip: '10.0.96.77',
+				name: 'Nova',
+				role: 'Sandbox',
+				location: 'Remote Lab',
+				notes: 'Awaiting image',
+				lastSeen: '1d ago',
+				latency: '--',
+				activity: '0 lines / 5m',
+				exporter: ':8088 /stream/cowrie-log',
+				tags: ['sandbox', 'offline', 'remote'],
+				status: 'offline',
+				stream: false
+			},
+			{
+				id: 'pot-5',
+				ip: '10.0.96.201',
+				name: 'Orion',
+				role: 'Archive',
+				location: 'Lab C',
+				notes: 'Cold storage',
+				lastSeen: '6h ago',
+				latency: '--',
+				activity: '0 lines / 5m',
+				exporter: ':8088 /stream/cowrie-log',
+				tags: ['archive', 'offline', 'lab-c'],
+				status: 'offline',
+				stream: false
+			},
+			{
+				id: 'pot-6',
+				ip: '10.0.96.233',
+				name: 'Sable',
+				role: 'Sensor',
+				location: 'North Wing',
+				notes: 'Power cycle pending',
+				lastSeen: '3h ago',
+				latency: '--',
+				activity: '0 lines / 5m',
+				exporter: ':8088 /stream/cowrie-log',
+				tags: ['sensor', 'offline', 'north'],
+				status: 'offline',
+				stream: false
+			},
+			{
+				id: 'pot-7',
+				ip: '10.0.96.142',
+				name: 'Cipher',
+				role: 'Decoy',
+				location: 'Hallway',
+				notes: 'Disk rebuild',
+				lastSeen: '12h ago',
+				latency: '--',
+				activity: '0 lines / 5m',
+				exporter: ':8088 /stream/cowrie-log',
+				tags: ['decoy', 'offline', 'hallway'],
+				status: 'offline',
+				stream: false
+			}
+		];
 
 		function isAtBottom(el) {
 			return el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
@@ -215,18 +488,132 @@ button.ghost { background: rgba(15, 23, 42, 0.6); color: var(--text); border: 1p
 			followBtn.textContent = followOn ? 'Auto-follow: ON' : 'Auto-follow: OFF';
 		});
 
-		const src = new EventSource('/ssh-stream-proxy');
-		src.onmessage = (event) => {
-			connStatus.textContent = 'Connected';
-			connStatus.classList.remove('warn');
-			logView.textContent += (event.data || '') + "\n";
-			maintainScroll();
-		};
-		src.onerror = () => {
-			connStatus.textContent = 'Reconnecting…';
-			connStatus.classList.add('warn');
-		};
+		function setConnState(text, state) {
+			connStatus.textContent = text;
+			connStatus.classList.remove('warn', 'offline');
+			if (state === 'warn') {
+				connStatus.classList.add('warn');
+			} else if (state === 'offline') {
+				connStatus.classList.add('offline');
+			}
+		}
+
+		function setFeedStatus(pot) {
+			feedIp.textContent = pot.ip;
+			feedStatus.textContent = pot.status === 'online' ? 'Online' : 'Offline';
+			feedStatus.classList.toggle('online', pot.status === 'online');
+			feedStatus.classList.toggle('offline', pot.status !== 'online');
+		}
+
+		function stopStream() {
+			if (src) {
+				src.close();
+				src = null;
+			}
+		}
+
+		function startStream(pot) {
+			stopStream();
+			if (!pot.stream || pot.status !== 'online') {
+				setConnState('Offline', 'offline');
+				return;
+			}
+			setConnState('Connecting...', 'warn');
+			src = new EventSource(`/ssh-stream-proxy?pot=${encodeURIComponent(pot.id)}`);
+			src.onopen = () => setConnState('Connected');
+			src.onmessage = (event) => {
+				logView.textContent += (event.data || '') + "\n";
+				maintainScroll();
+			};
+			src.addEventListener('status', (event) => {
+				const message = (event.data || '').toLowerCase();
+				if (message.startsWith('connected')) {
+					setConnState('Connected');
+					lastStatusMessage = '';
+				} else if (message.startsWith('connecting')) {
+					setConnState('Connecting...', 'warn');
+				} else if (message.startsWith('disconnected') || message.startsWith('error')) {
+					setConnState('Offline', 'offline');
+				} else if (message) {
+					setConnState(event.data, 'warn');
+				}
+				if (event.data && message.startsWith('error') && event.data !== lastStatusMessage) {
+					logView.textContent += `[status] ${event.data}\n`;
+					maintainScroll();
+					lastStatusMessage = event.data;
+				}
+			});
+			src.onerror = () => setConnState('Reconnecting.', 'warn');
+		}
+
+		function renderPotMenu() {
+			potMenu.innerHTML = '';
+			pots.forEach((pot) => {
+				const option = document.createElement('button');
+				option.type = 'button';
+				option.className = 'pot-option';
+				option.dataset.potId = pot.id;
+				const statusClass = pot.status === 'online' ? 'online' : 'offline';
+				const statusLabel = pot.status === 'online' ? 'Online' : 'Offline';
+				option.innerHTML = `
+					<span class="dot ${statusClass}"></span>
+					<span class="pot-ip">${pot.ip}</span>
+					<span class="pot-status ${statusClass}">${statusLabel}</span>
+					<span class="pot-sub">${pot.name} | ${pot.role} | ${pot.location} | ${pot.notes}</span>
+				`;
+				option.addEventListener('click', () => {
+					selectPot(pot);
+					potMenu.classList.remove('open');
+					potSelect.classList.remove('open');
+					potMenu.setAttribute('aria-hidden', 'true');
+				});
+				potMenu.appendChild(option);
+			});
+		}
+
+		function selectPot(pot) {
+			potLabel.textContent = pot.ip;
+			potDot.className = `dot ${pot.status === 'online' ? 'online' : 'offline'}`;
+			potMeta.textContent = `${pot.name} | ${pot.role} | ${pot.location}`;
+			potStatusText.textContent = pot.status === 'online' ? 'Online' : 'Offline';
+			potStatusText.classList.toggle('online', pot.status === 'online');
+			potStatusText.classList.toggle('offline', pot.status !== 'online');
+			potLastSeen.textContent = pot.lastSeen || 'Unknown';
+			potLatency.textContent = pot.latency || '--';
+			potRole.textContent = pot.role;
+			potLocation.textContent = pot.location;
+			potActivity.textContent = pot.activity || '0 lines / 5m';
+			potExporter.textContent = pot.exporter || 'n/a';
+			potNotes.textContent = pot.notes || 'None';
+			potBadges.innerHTML = '';
+			(pot.tags || []).forEach((tag) => {
+				const badge = document.createElement('span');
+				badge.className = 'pot-badge';
+				badge.textContent = tag;
+				potBadges.appendChild(badge);
+			});
+			setFeedStatus(pot);
+			startStream(pot);
+		}
+
+		potToggle.addEventListener('click', () => {
+			const isOpen = potMenu.classList.toggle('open');
+			potSelect.classList.toggle('open', isOpen);
+			potMenu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+		});
+
+		document.addEventListener('click', (event) => {
+			if (!potSelect.contains(event.target)) {
+				potMenu.classList.remove('open');
+				potSelect.classList.remove('open');
+				potMenu.setAttribute('aria-hidden', 'true');
+			}
+		});
+
+		renderPotMenu();
+		selectPot(pots[0]);
 	</script>
+
 </body>
 </html>
 

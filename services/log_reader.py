@@ -28,17 +28,15 @@ def _load_json_lines(path: Path, max_lines: int) -> List[Dict[str, Any]]:
 	"""Load up to max_lines JSONL records from disk (tail-safe)."""
 	logger = logging.getLogger(__name__)
 	abs_path = path.resolve()
-	logger.info("DEBUG: File path: %s", abs_path)
+	logger.debug("File path: %s", abs_path)
 	exists = path.exists()
 	size = path.stat().st_size if exists else 0
-	logger.info("DEBUG: File exists: %s, size: %d bytes", exists, size)
+	logger.debug("File exists: %s, size: %d bytes", exists, size)
 	if not exists or not path.is_file():
-		logger.warning("DEBUG: File does not exist or is not a file")
+		logger.debug("File does not exist or is not a file")
 		return []
 	buf: Deque[Dict[str, Any]] = deque(maxlen=max_lines)
 	lines_read = 0
-	first_lines = []
-	last_lines: Deque[str] = deque(maxlen=3)
 	try:
 		with path.open("r", encoding="utf-8") as handle:
 			for line_num, line in enumerate(handle, 1):
@@ -46,23 +44,16 @@ def _load_json_lines(path: Path, max_lines: int) -> List[Dict[str, Any]]:
 				if not line:
 					continue
 				lines_read += 1
-				if lines_read <= 3:
-					first_lines.append(line[:200] + "..." if len(line) > 200 else line)
-				last_lines.append(line[:200] + "..." if len(line) > 200 else line)
 				try:
 					buf.append(json.loads(line))
 				except Exception as e:
-					logger.warning("DEBUG: Skipping invalid JSON line %d: %s (error: %s)", line_num, line[:100], str(e))
+					logger.debug("Skipping invalid JSON line %d (error: %s)", line_num, str(e))
 					continue
 	except Exception as e:
-		logger.exception("DEBUG: Failed to read JSON lines from %s", path)
+		logger.exception("Failed to read JSON lines from %s", path)
 		return []
 	items = list(buf)
-	logger.info("DEBUG: Lines read: %d, parsed items: %d", lines_read, len(items))
-	if first_lines:
-		logger.info("DEBUG: First 3 lines: %s", first_lines)
-	if last_lines:
-		logger.info("DEBUG: Last 3 lines: %s", list(last_lines))
+	logger.debug("Lines read: %d, parsed items: %d", lines_read, len(items))
 	return items
 
 
@@ -74,7 +65,6 @@ def normalize_http_events(raw_events: List[Dict[str, Any]]) -> List[Dict[str, An
 	parsed_failed = 0
 	ip_fields_used = set()
 	no_ip_count = 0
-	examples = []
 	for entry in raw_events:
 		try:
 			ts = _parse_time(entry.get("time") or entry.get("timestamp") or entry.get("@timestamp"))
@@ -99,15 +89,17 @@ def normalize_http_events(raw_events: List[Dict[str, Any]]) -> List[Dict[str, An
 				},
 			)
 			parsed_ok += 1
-			if len(examples) < 3:
-				examples.append(normalized[-1])
 		except Exception as e:
-			logger.warning("DEBUG: Failed to normalize HTTP entry: %s (error: %s)", entry, str(e))
+			logger.warning("Failed to normalize HTTP entry (error: %s)", str(e))
 			parsed_failed += 1
-	logger.info("DEBUG: HTTP parsed_ok=%d, parsed_failed=%d, no_ip_count=%d, ip_fields_used=%s", parsed_ok, parsed_failed, no_ip_count, list(ip_fields_used))
-	if examples:
-		logger.info("DEBUG: HTTP examples: %s", examples)
-	logger.info("Normalized HTTP events=%d", len(normalized))
+	logger.debug(
+		"HTTP parsed_ok=%d, parsed_failed=%d, no_ip_count=%d, ip_fields_used=%s",
+		parsed_ok,
+		parsed_failed,
+		no_ip_count,
+		list(ip_fields_used),
+	)
+	logger.debug("Normalized HTTP events=%d", len(normalized))
 	return normalized
 
 
@@ -119,7 +111,6 @@ def normalize_ssh_events(raw_events: List[Dict[str, Any]]) -> List[Dict[str, Any
 	parsed_failed = 0
 	ip_fields_used = set()
 	no_ip_count = 0
-	examples = []
 	event_ids_seen = set()
 	for entry in raw_events:
 		try:
@@ -145,15 +136,18 @@ def normalize_ssh_events(raw_events: List[Dict[str, Any]]) -> List[Dict[str, Any
 				},
 			)
 			parsed_ok += 1
-			if len(examples) < 3:
-				examples.append(normalized[-1])
 		except Exception as e:
-			logger.warning("DEBUG: Failed to normalize SSH entry: %s (error: %s)", entry, str(e))
+			logger.warning("Failed to normalize SSH entry (error: %s)", str(e))
 			parsed_failed += 1
-	logger.info("DEBUG: SSH parsed_ok=%d, parsed_failed=%d, no_ip_count=%d, ip_fields_used=%s, event_ids_seen=%s", parsed_ok, parsed_failed, no_ip_count, list(ip_fields_used), list(event_ids_seen))
-	if examples:
-		logger.info("DEBUG: SSH examples: %s", examples)
-	logger.info("Normalized SSH events=%d", len(normalized))
+	logger.debug(
+		"SSH parsed_ok=%d, parsed_failed=%d, no_ip_count=%d, ip_fields_used=%s, event_ids_seen=%s",
+		parsed_ok,
+		parsed_failed,
+		no_ip_count,
+		list(ip_fields_used),
+		list(event_ids_seen),
+	)
+	logger.debug("Normalized SSH events=%d", len(normalized))
 	return normalized
 
 
